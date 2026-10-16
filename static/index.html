@@ -265,21 +265,26 @@
             resultDiv.innerHTML = '<span class="spinner"></span> Обработка запроса через пайплайн классификаторов...';
 
             try {
-                const response = await fetch(`${API_BASE}/process`, {
+                const levels = { 3: 'tony_stark', 4: 'subnautica', 5: 'cyberpunk' };
+                const response = await fetch(`${API_BASE}/predict`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ query, category, difficulty }),
+                    body: JSON.stringify({ level: levels[category], text: query }),
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
                     let cssClass = '';
-                    const text = data.response;
+                    const text = data.passed
+                        ? '🎉 Пароль угадан — уровень пройден!'
+                        : data.text;
 
-                    if (text.includes('Ошибка')) {
+                    if (data.passed) {
+                        cssClass = 'success';
+                    } else if (text.includes('Ошибка')) {
                         cssClass = 'error';
                     } else if (text.includes('опасный') || text.includes('усилить') || text.includes('не соответствует')) {
                         cssClass = 'warning';

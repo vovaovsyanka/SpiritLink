@@ -10,7 +10,7 @@ class LLMClient:
 
     def __init__(self):
         self.api_key = os.getenv("OLLAMA_API_KEY", "")
-        self.model = os.getenv("OLLAMA_MODEL", "minimax-m3:cloud")
+        self.model = os.getenv("OLLAMA_MODEL", "gemma4:31b-cloud")
         self.api_url = os.getenv("OLLAMA_API_URL", "https://ollama.com/api/generate")
 
     def get_answer_cloud(self, prompt: str, api_key: Optional[str] = None):
