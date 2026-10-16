@@ -39,16 +39,20 @@
 ## Структура проекта
 
 ```
-prompt_injection_service/
-  main.py                  # FastAPI бэкенд (endpoint /process)
-  pipeline.py              # Логика пайплайна обработки
-  llm_client.py            # Клиент для Ollama API
-  base_classifier.py       # Базовые классификаторы (TF-IDF, LSTM, BERT)
-  category_classifier.py   # Категориальные BERT классификаторы
-  static/
-    index.html             # Фронтенд (поле ввода, выбор параметров, вывод)
-  requirements.txt         # Зависимости Python
-  README.md                # Этот файл
+main.py                    # Точка входа (uvicorn main:app)
+app/
+  api.py                   # FastAPI: /predict, /health, фронтенд
+  schemas.py               # Pydantic-модели запроса/ответа
+  pipeline.py              # Каскад классификаторов + LLM
+  passwords.py             # Текущие пароли по категориям
+  ghosts.py                # Призраки: пароли и предыстории
+  settings.py              # Пути, env-переменные, игровые константы
+  text_utils.py            # Очистка текста
+  classifiers/             # Dictionary, TF-IDF, LSTM, BERT-классификаторы
+  llm/                     # Клиент Ollama и промпты
+static/index.html          # Фронтенд
+scripts/test_models.py     # Ручное сравнение LLM-моделей
+models/                    # Веса моделей (не в git)
 ```
 
 ## Установка и запуск
@@ -147,30 +151,30 @@ http://localhost:8000/
 
 ## API
 
-### POST `/process`
+### POST `/predict`
 
-Основной endpoint для обработки запросов.
+Игровой endpoint.
 
 **Тело запроса (JSON):**
 ```json
 {
-    "query": "Текст вашего промпт-запроса",
-    "category": 4,
-    "difficulty": 2
+    "level": "tony_stark",
+    "text": "Текст вашего запроса"
 }
 ```
 
-- `query` — текст запроса (строка, обязательное)
-- `category` — целевая категория: `3`, `4` или `5` (integer, обязательное)
-- `difficulty` — уровень сложности: `1` (словарь), `2` (TF-IDF), `3` (LSTM), `4` (BERT)
+- `level` — `tony_stark` (категория 3), `subnautica` (4) или `cyberpunk` (5)
+- `text` — текст запроса
 
 **Ответ (JSON):**
 ```json
 {
-    "response": "Текстовый ответ от сервиса",
-    "status": "ok"
+    "text": "Ответ сервиса (пусто, если пароль угадан)",
+    "passed": false
 }
 ```
+
+Классификатор сложности в игре фиксирован (`GAME_DIFFICULTY` в `app/settings.py`, по умолчанию TF-IDF).
 
 ### GET `/health`
 
