@@ -1,0 +1,416 @@
+fileFormatVersion: 2
+guid: 10bbafed5296d6444a242f899131d79c
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3624477725128677276
+    second: RuladaWhiteLogo_0
+  - first:
+      213: -2276075184450812917
+    second: RuladaWhiteLogo_1
+  - first:
+      213: -4116768561105598487
+    second: RuladaWhiteLogo_2
+  - first:
+      213: 3661978161613787709
+    second: RuladaWhiteLogo_3
+  - first:
+      213: 7042653433082073233
+    second: RuladaWhiteLogo_4
+  - first:
+      213: -5073707508693520979
+    second: RuladaWhiteLogo_5
+  - first:
+      213: 257913368428407808
+    second: RuladaWhiteLogo_6
+  - first:
+      213: -3903510040201798698
+    second: RuladaWhiteLogo_7
+  - first:
+      213: 2858176709627055890
+    second: RuladaWhiteLogo_8
+  - first:
+      213: -506176235876575688
+    second: RuladaWhiteLogo_9
+  - first:
+      213: 1676456002310132113
+    second: RuladaWhiteLogo_10
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 4367
+        width: 635
+        height: 747
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 468a36956b443bdc0800000000000000
+      internalID: -3624477725128677276
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_1
+      rect:
+        serializedVersion: 2
+        x: 798
+        y: 4713
+        width: 584
+        height: 440
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b044abccda1c960e0800000000000000
+      internalID: -2276075184450812917
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_2
+      rect:
+        serializedVersion: 2
+        x: 1637
+        y: 4713
+        width: 583
+        height: 440
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e70ec42ecc4ed6c0800000000000000
+      internalID: -4116768561105598487
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_3
+      rect:
+        serializedVersion: 2
+        x: 2479
+        y: 4304
+        width: 486
+        height: 748
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d325a3a6cb5f1d230800000000000000
+      internalID: 3661978161613787709
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_4
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 679
+        width: 1584
+        height: 3171
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 190da0bdbf78cb160800000000000000
+      internalID: 7042653433082073233
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_5
+      rect:
+        serializedVersion: 2
+        x: 1038
+        y: 2062
+        width: 1262
+        height: 1627
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dad271a07e19699b0800000000000000
+      internalID: -5073707508693520979
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_6
+      rect:
+        serializedVersion: 2
+        x: 1444
+        y: 1303
+        width: 1584
+        height: 3172
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00ceff397da449300800000000000000
+      internalID: 257913368428407808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_7
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 101
+        width: 486
+        height: 748
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dbd994dc42f3d9c0800000000000000
+      internalID: -3903510040201798698
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_8
+      rect:
+        serializedVersion: 2
+        x: 808
+        y: 0
+        width: 584
+        height: 440
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21f8d9af2984aa720800000000000000
+      internalID: 2858176709627055890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_9
+      rect:
+        serializedVersion: 2
+        x: 1646
+        y: 0
+        width: 584
+        height: 440
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83615d23563b9f8f0800000000000000
+      internalID: -506176235876575688
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RuladaWhiteLogo_10
+      rect:
+        serializedVersion: 2
+        x: 2393
+        y: 39
+        width: 635
+        height: 747
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19154431ad7f34710800000000000000
+      internalID: 1676456002310132113
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      RuladaWhiteLogo_0: -3624477725128677276
+      RuladaWhiteLogo_1: -2276075184450812917
+      RuladaWhiteLogo_10: 1676456002310132113
+      RuladaWhiteLogo_2: -4116768561105598487
+      RuladaWhiteLogo_3: 3661978161613787709
+      RuladaWhiteLogo_4: 7042653433082073233
+      RuladaWhiteLogo_5: -5073707508693520979
+      RuladaWhiteLogo_6: 257913368428407808
+      RuladaWhiteLogo_7: -3903510040201798698
+      RuladaWhiteLogo_8: 2858176709627055890
+      RuladaWhiteLogo_9: -506176235876575688
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ad9601d562f7044e844e34dfbdfb87b, type: 3}
+  m_Name: SecurityEntering
+  m_EditorClassIdentifier: 
+  _rootDialogue:
+  - _typeOfDialogue: 0
+    _symbolTime: 0.05
+    _simplePhrase:
+      _inputName: "\u042D\u043A\u0437\u043E\u0440\u0446\u0438\u0441\u0442"
+      inputText: "\u0412\u0445\u043E\u0434 \u0432 \u0441\u043B\u0443\u0436\u0435\u0431\u043D\u0443\u044E
+        \u0437\u043E\u043D\u0443."
+    _answers: []
+  _isReputationable: 0
+  _startReputation: 60
+  _minReputation: 40
+  _maxReputation: 85
+  _isStatable: 0
+  _nextGameState: 0
+  _necessaryPhrasesForResult: []
+  _goodResultDialogue: []
+  _midResultDialogue: []
+  _badResultDialogue: []

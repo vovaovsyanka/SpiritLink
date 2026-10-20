@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79d109ed0da8ecc6287e2bcc8c4e0d0a, type: 3}
+  m_Name: AudioClipRefsSO
+  m_EditorClassIdentifier: 
+  Fail: {fileID: 8300000, guid: f9a2e91efd4f40bb38841abdfd5c15d4, type: 3}
+  RuladaFall: {fileID: 8300000, guid: 39789a1ad13a3ad669983b3791dd8ea5, type: 3}
+  Success: {fileID: 8300000, guid: d9955ec52910d5ebfa9271ae1efded66, type: 3}
+  HardSuccess: {fileID: 8300000, guid: 0c9c1b5bb575e38d9b3f442c7dd4caf3, type: 3}
+  Footsteps: {fileID: 8300000, guid: 76f3f0c3f5aff22188ae09ce338370b9, type: 3}
+  Alarm: {fileID: 8300000, guid: 54347613d425b75e89fbf96762e3997a, type: 3}
+  OpenDoor: {fileID: 8300000, guid: c392ab45105d673baa0692c49eddd33c, type: 3}
+  CommissarOpenDoor: {fileID: 8300000, guid: 0fb863002dc8c381292815524ec1859a, type: 3}
+  VehicleNoise: {fileID: 8300000, guid: 21300f2180e31b096942d8210abc8b11, type: 3}
+  AlmostOutOfTimeTic: {fileID: 8300000, guid: f9e5f53264ef6cb8b8434ff8f43d3043, type: 3}
+  BirdSinging: {fileID: 8300000, guid: 57e5cad5c29773501bd60cd06244f67e, type: 3}
+  Paper: {fileID: 8300000, guid: c2762c61290ef5afc810a870c6921c61, type: 3}
+  ButtonSwitch: {fileID: 8300000, guid: e87151a1719d101cfac4c93466363194, type: 3}
+  StartGame: {fileID: 8300000, guid: f30a5533e59eeba4db72f72d6dc3ab0b, type: 3}
+  GoodExamResult: {fileID: 8300000, guid: 4c89c696fa301fcdfaaaa1e5f4dd430d, type: 3}

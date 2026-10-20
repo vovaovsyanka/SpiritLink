@@ -1,0 +1,22 @@
+fileFormatVersion: 2
+guid: 79d109ed0da8ecc6287e2bcc8c4e0d0a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - fail: {instanceID: 0}
+  - hardFail: {instanceID: 0}
+  - success: {instanceID: 0}
+  - hardSuccess: {instanceID: 0}
+  - footsteps: {instanceID: 0}
+  - alarm: {instanceID: 0}
+  - alarmOff: {instanceID: 0}
+  - blanket: {instanceID: 0}
+  - openDoor: {instanceID: 0}
+  - commissarOpenDoor: {instanceID: 0}
+  - vehicleNoise: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,637 @@
+fileFormatVersion: 2
+guid: e806e53227dd5a6499cf0c65e9de4be8
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7518478397871396474
+    second: temple-garbage_0
+  - first:
+      213: -1149341916938683407
+    second: temple-garbage_1
+  - first:
+      213: 3445107985950804778
+    second: temple-garbage_2
+  - first:
+      213: 6210663924059598172
+    second: temple-garbage_3
+  - first:
+      213: 131571451001705415
+    second: temple-garbage_4
+  - first:
+      213: 3184570379254712555
+    second: temple-garbage_5
+  - first:
+      213: 8348697965207326386
+    second: temple-garbage_6
+  - first:
+      213: -8425140699702336922
+    second: temple-garbage_7
+  - first:
+      213: 883607629476318017
+    second: temple-garbage_8
+  - first:
+      213: 8506261890006496113
+    second: temple-garbage_9
+  - first:
+      213: -5574734235173836488
+    second: temple-garbage_10
+  - first:
+      213: -1101053034449044964
+    second: temple-garbage_11
+  - first:
+      213: 913723635408095139
+    second: temple-garbage_12
+  - first:
+      213: 1866073516233260856
+    second: temple-garbage_13
+  - first:
+      213: 2969990309381724516
+    second: temple-garbage_14
+  - first:
+      213: 8461642272925744542
+    second: temple-garbage_15
+  - first:
+      213: -580626545701825544
+    second: temple-garbage_16
+  - first:
+      213: -7489054593144316769
+    second: temple-garbage_17
+  - first:
+      213: 8550220010587572054
+    second: temple-garbage_18
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 6
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 20
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: temple-garbage_0
+      rect:
+        serializedVersion: 2
+        x: 62
+        y: 220
+        width: 65
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a76929ca440075860800000000000000
+      internalID: 7518478397871396474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_1
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 220
+        width: 65
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fb3763bd97bc00f0800000000000000
+      internalID: -1149341916938683407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_2
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 171
+        width: 41
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2b8573d57b7fcf20800000000000000
+      internalID: 3445107985950804778
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_3
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 170
+        width: 34
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5de7e4fee5b03650800000000000000
+      internalID: 6210663924059598172
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_4
+      rect:
+        serializedVersion: 2
+        x: 284
+        y: 182
+        width: 41
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c31a8f998f63d100800000000000000
+      internalID: 131571451001705415
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_5
+      rect:
+        serializedVersion: 2
+        x: 322
+        y: 137
+        width: 50
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be845b923edd13c20800000000000000
+      internalID: 3184570379254712555
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_6
+      rect:
+        serializedVersion: 2
+        x: 366
+        y: 171
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2be8539e0988cd370800000000000000
+      internalID: 8348697965207326386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_7
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 95
+        width: 39
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6626e830c23e31b80800000000000000
+      internalID: -8425140699702336922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_8
+      rect:
+        serializedVersion: 2
+        x: 105
+        y: 146
+        width: 21
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14bc2cb1574334c00800000000000000
+      internalID: 883607629476318017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_9
+      rect:
+        serializedVersion: 2
+        x: 366
+        y: 160
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 173b740fe105c0670800000000000000
+      internalID: 8506261890006496113
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_10
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 78
+        width: 28
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8392143dfb092a2b0800000000000000
+      internalID: -5574734235173836488
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_11
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 95
+        width: 25
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1a7cca491648b0f0800000000000000
+      internalID: -1101053034449044964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_12
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 91
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a7c0672ec23eac00800000000000000
+      internalID: 913723635408095139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_13
+      rect:
+        serializedVersion: 2
+        x: 345
+        y: 51
+        width: 39
+        height: 81
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83ff8d3e9ff95e910800000000000000
+      internalID: 1866073516233260856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_14
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 5
+        width: 17
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 469dc016376873920800000000000000
+      internalID: 2969990309381724516
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_15
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 22
+        width: 29
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9dfa26c0dacd6570800000000000000
+      internalID: 8461642272925744542
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_16
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 7
+        width: 10
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f3d744ab3331f7f0800000000000000
+      internalID: -580626545701825544
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_17
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 18
+        width: 15
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9c1028b688811890800000000000000
+      internalID: -7489054593144316769
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: temple-garbage_18
+      rect:
+        serializedVersion: 2
+        x: 244
+        y: 3
+        width: 15
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65742827ccb78a670800000000000000
+      internalID: 8550220010587572054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      temple-garbage_0: 7518478397871396474
+      temple-garbage_1: -1149341916938683407
+      temple-garbage_10: -5574734235173836488
+      temple-garbage_11: -1101053034449044964
+      temple-garbage_12: 913723635408095139
+      temple-garbage_13: 1866073516233260856
+      temple-garbage_14: 2969990309381724516
+      temple-garbage_15: 8461642272925744542
+      temple-garbage_16: -580626545701825544
+      temple-garbage_17: -7489054593144316769
+      temple-garbage_18: 8550220010587572054
+      temple-garbage_2: 3445107985950804778
+      temple-garbage_3: 6210663924059598172
+      temple-garbage_4: 131571451001705415
+      temple-garbage_5: 3184570379254712555
+      temple-garbage_6: 8348697965207326386
+      temple-garbage_7: -8425140699702336922
+      temple-garbage_8: 883607629476318017
+      temple-garbage_9: 8506261890006496113
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
