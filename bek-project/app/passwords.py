@@ -1,25 +1,19 @@
-"""Хранилище текущих паролей по категориям."""
+"""Выбор слова-якоря для прохождения игрока."""
 
 import random
-from threading import Lock
 
 from app.ghosts import GHOSTS
 
 
-class PasswordStore:
-    def __init__(self):
-        self._passwords: dict[int, str] = {}
-        self._lock = Lock()
-
-    def current(self, category: int) -> str:
-        """Текущий пароль категории; если его ещё нет — выбирается случайный."""
-        with self._lock:
-            if category not in self._passwords:
-                self._passwords[category] = random.choice(GHOSTS[category]["passwords"])
-            return self._passwords[category]
-
-    def rotate(self, category: int) -> str:
-        """Выбирает новый случайный пароль (после того, как старый угадан)."""
-        with self._lock:
-            self._passwords[category] = random.choice(GHOSTS[category]["passwords"])
-            return self._passwords[category]
+def pick_secret(category: int, used: list[str]) -> tuple[str, list[str]]:
+    """
+    Случайное слово из пула призрака, которого не было в used.
+    Когда пул исчерпан, used очищается (кроме последнего слова, чтобы не выдать его дважды подряд).
+    Возвращает (слово, used после возможной очистки).
+    """
+    pool = GHOSTS[category]["passwords"]
+    available = [word for word in pool if word not in used]
+    if not available:
+        used = used[-1:]
+        available = [word for word in pool if word not in used] or pool
+    return random.choice(available), used

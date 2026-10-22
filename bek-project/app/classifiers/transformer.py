@@ -9,13 +9,13 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from app import settings
 from app.text_utils import clean_for_bert
 
-from .base import DEVICE, BaseClassifier
+from .base import DEVICE, BaseClassifier, Prediction
 
 logger = logging.getLogger(__name__)
 
 
 class TransformerClassifier(BaseClassifier):
-    """Бинарный классификатор: argmax логитов дообученной модели."""
+    """Бинарный классификатор: argmax логитов дообученной модели, вероятность — softmax."""
 
     def __init__(self, model_path: Path, tokenizer_name: str, name: str = ""):
         if name:
@@ -28,7 +28,7 @@ class TransformerClassifier(BaseClassifier):
         )
         self._model.to(DEVICE).eval()
 
-    def _predict(self, text: str) -> int:
+    def _predict(self, text: str) -> Prediction:
         inputs = self._tokenizer(
             clean_for_bert(text),
             truncation=True,
@@ -38,7 +38,8 @@ class TransformerClassifier(BaseClassifier):
         inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
         with torch.no_grad():
             logits = self._model(**inputs).logits
-        return int(logits.argmax(-1).item())
+        probs = torch.softmax(logits, dim=-1)[0]
+        return Prediction(label=int(probs.argmax().item()), probability=float(probs[1].item()))
 
 
 class RoSBERTa(TransformerClassifier):
@@ -46,11 +47,6 @@ class RoSBERTa(TransformerClassifier):
 
     def __init__(self):
         super().__init__(settings.GENERAL_BERT_PATH, settings.GENERAL_BERT_TOKENIZER, "RoSBERTa")
-
-
-class MultilingualBert(TransformerClassifier):
-    def __init__(self):
-        super().__init__(settings.E5_PATH, settings.E5_TOKENIZER, "MultilingualBert")
 
 
 class CategoryClassifier(TransformerClassifier):
@@ -77,5 +73,7 @@ class CategoryClassifier(TransformerClassifier):
         else:
             super().__init__(model_path, settings.CATEGORY_TOKENIZER)
 
-    def _predict(self, text: str) -> int:
-        return 1 if self._stub else super()._predict(text)
+    def _predict(self, text: str) -> Prediction:
+        if self._stub:
+            return Prediction(label=1, details={"stub": True})
+        return super()._predict(text)

@@ -3,6 +3,8 @@
 import logging
 import threading
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Optional
 
 import torch
 
@@ -28,11 +30,23 @@ def _log_device() -> None:
 _log_device()
 
 
+@dataclass(frozen=True)
+class Prediction:
+    """
+    label — решение классификатора (1 — вредоносный / целевая категория, 0 — нет);
+    probability — вероятность класса 1, если модель её даёт; details — прочее для разбора ошибок.
+    """
+
+    label: int
+    probability: Optional[float] = None
+    details: dict = field(default_factory=dict)
+
+
 class BaseClassifier(ABC):
     """
     Классификатор запросов: 1 — вредоносный, 0 — безопасный.
 
-    Наследники реализуют _predict. classify() вызывает его под замком: быстрые токенизаторы HF
+    Наследники реализуют _predict. predict() вызывает его под замком: быстрые токенизаторы HF
     и общая модель на GPU небезопасны при одновременных вызовах из нескольких потоков,
     а на одном GPU параллельный инференс всё равно выполняется последовательно.
     """
@@ -45,12 +59,15 @@ class BaseClassifier(ABC):
         return obj
 
     @abstractmethod
-    def _predict(self, text: str) -> int:
+    def _predict(self, text: str) -> Prediction:
         ...
 
-    def classify(self, text: str) -> int:
+    def predict(self, text: str) -> Prediction:
         with self._lock:
             return self._predict(text)
+
+    def classify(self, text: str) -> int:
+        return self.predict(text).label
 
     def get_name(self) -> str:
         return self.name or type(self).__name__
