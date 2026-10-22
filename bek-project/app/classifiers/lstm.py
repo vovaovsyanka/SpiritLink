@@ -6,7 +6,7 @@ import torch.nn as nn
 from app import settings
 from app.text_utils import tokenize
 
-from .base import DEVICE, BaseClassifier
+from .base import DEVICE, BaseClassifier, Prediction
 
 
 class MyLSTM(nn.Module):
@@ -61,7 +61,10 @@ class LSTM(BaseClassifier):
         ids += [0] * (self.max_length - len(ids))
         return torch.tensor(ids, dtype=torch.long).unsqueeze(0).to(DEVICE)
 
-    def _predict(self, text: str) -> int:
+    def _predict(self, text: str) -> Prediction:
         with torch.no_grad():
-            predicted = self.model(self._encode(text)).argmax(dim=1).cpu().numpy()
-        return 1 if self.label_encoder.inverse_transform(predicted)[0] == "unsafe" else 0
+            probs = torch.softmax(self.model(self._encode(text)), dim=1)[0].cpu().numpy()
+        classes = [str(c) for c in self.label_encoder.inverse_transform(range(len(probs)))]
+        label = classes[int(probs.argmax())]
+        probability = float(probs[classes.index("unsafe")]) if "unsafe" in classes else None
+        return Prediction(label=1 if label == "unsafe" else 0, probability=probability)

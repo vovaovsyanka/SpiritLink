@@ -92,7 +92,7 @@ class LLMClient:
             return "Ошибка: не удалось подключиться к Ollama API. Проверьте подключение и URL."
         except LLMError as e:
             logger.error("Ollama API: %s", e)
-            return f"Ошибка: {e}"
-        except Exception as e:
+            return "Ошибка: модель сейчас недоступна, попробуйте позже."
+        except Exception:
             logger.exception("Ошибка запроса к LLM")
-            return f"Ошибка при обработке запроса: {e}"
+            return "Ошибка при обработке запроса, попробуйте позже."
