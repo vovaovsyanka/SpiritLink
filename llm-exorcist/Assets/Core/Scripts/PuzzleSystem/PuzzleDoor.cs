@@ -17,7 +17,23 @@ public class PuzzleDoor : MonoBehaviour
 
     private void Start()
     {
-        SetLocation(opened: false);
+        // OpenInstantly мог быть вызван раньше Start (прогресс с сервера пришёл быстро)
+        SetLocation(opened: _isOpened);
+    }
+
+    /// <summary>Паззл решён в прошлый заход: без затемнения сразу ставим игрока за дверь.</summary>
+    public void OpenInstantly()
+    {
+        if (_isOpened) return;
+        _isOpened = true;
+
+        SetLocation(opened: true);
+        var player = Player.Instance;
+        if (player != null && _afterSolvedPuzzleTransform != null)
+        {
+            player.transform.position = _afterSolvedPuzzleTransform.position;
+        }
+        OnPuzzleEnd?.Invoke();
     }
 
     [ContextMenu("Open Door")]

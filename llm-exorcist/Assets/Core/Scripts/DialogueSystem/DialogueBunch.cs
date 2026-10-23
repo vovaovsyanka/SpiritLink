@@ -27,9 +27,10 @@ public class DialogueBunch : ScriptableObject
     private float _reputation = 50f;
     private List<DialogueBaseClass> _currentDialogue;
 
+    // В ассетах диалогов без карточек поле не заполнено и приходит null
     public IReadOnlyList<PuzzleItemDataStruct> PuzzleItemDatas
     {
-        get => _puzzleDatas;
+        get => _puzzleDatas ?? System.Array.Empty<PuzzleItemDataStruct>();
     }
 
     public bool IsReputationable

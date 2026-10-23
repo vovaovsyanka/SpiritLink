@@ -24,6 +24,9 @@ namespace Core.Scripts.PuzzleSystem
         [Space(10)]
         [SerializeField] private PuzzleDoor _puzzleDoor;
 
+        /// <summary>Паззл собран правильно (для сохранения прогресса).</summary>
+        public static event System.Action OnSolved;
+
         private RectTransform _workspaceTransform;
         private RectTransform _blocksTransform;
         private Camera _uiCamera;
@@ -118,6 +121,18 @@ namespace Core.Scripts.PuzzleSystem
 
             var spawner = Instantiate(_spawnerPrefab, _spawnerSpaceTransform).GetComponent<PuzzleSpawner>();
             spawner.Initialize(this, data);
+        }
+
+        /// <summary>Возвращает карточку, найденную в прошлый заход (прогресс с сервера).</summary>
+        public void RestorePuzzle(PuzzleItemDataStruct data)
+        {
+            CreatePuzzle(data);
+        }
+
+        /// <summary>Паззл уже собран в прошлый заход — повторно не проверяем.</summary>
+        public void MarkSolved()
+        {
+            _isSolved = true;
         }
 
         [ContextMenu("Spawn Test Puzzle")]
@@ -386,6 +401,7 @@ namespace Core.Scripts.PuzzleSystem
                 if (correct)
                 {
                     _isSolved = true;
+                    OnSolved?.Invoke();
                     if (_puzzleDoor != null) _puzzleDoor.OpenDoor();
                     return;
                 }

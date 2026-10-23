@@ -41,8 +41,12 @@ public class DialogueViewer : MonoBehaviour
     public static event EventHandler OnCreditBookAction;
     public static event Action<DialogueBaseClass> OnPhraseChanged;
     public static event Action<PuzzleItemDataStruct> OnDialogueEnded;
+    /// <summary>Разговор закончился (для журнала: все его реплики уже прошли через OnPhraseChanged).</summary>
+    public static event Action OnConversationFinished;
 
     public static bool IsGoing { get; private set; } = false;
+    /// <summary>Диалог этого персонажа (нужен, чтобы восстановить найденные карточки по тексту).</summary>
+    public DialogueBunch Bunch => _dialogueBunch;
     public DialogueBaseClass CurrentDialogueElement { get; private set; }
 
 
@@ -114,6 +118,7 @@ public class DialogueViewer : MonoBehaviour
     {
         Reseter();
         OnCreditBookAction?.Invoke(this, EventArgs.Empty);
+        OnConversationFinished?.Invoke();
 
 
         IsGoing = false;

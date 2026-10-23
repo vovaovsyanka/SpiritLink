@@ -46,12 +46,26 @@ class TokenResponse(BaseModel):
 
 # ── Прогресс ─────────────────────────────────────────────────────────────────
 
+class JournalEntry(BaseModel):
+    name: str = Field("", max_length=200, description="Кто говорит")
+    text: str = Field(..., max_length=2000, description="Реплика")
+
+
+class JournalDialogue(BaseModel):
+    entries: list[JournalEntry]
+
+
+class JournalRequest(BaseModel):
+    entries: list[JournalEntry] = Field(..., min_length=1, max_length=200, description="Реплики одного разговора")
+
+
 class PassState(BaseModel):
     pass_id: str
     started: bool
     phase: str = Field(..., description="investigation | puzzle | free_prompt | done; пусто, если не начато")
     completed: bool = Field(..., description="Прохождение закрыто хотя бы раз (сохраняется при перепрохождении)")
     collected_clues: list[str]
+    journal: list[JournalDialogue] = Field(..., description="Прочитанные разговоры по порядку, без повторов")
 
 
 class ProgressResponse(BaseModel):

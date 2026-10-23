@@ -1,33 +1,17 @@
 using System;
 using System.Collections;
+using Core.Scripts.Network;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Networking;
 using UnityEngine.UI;
 
 public class MessageSpawner : MonoBehaviour
 {
-    private class MessageResponse
-    {
-        public string text;
-        public bool passed;
-    }
-
-    public class MessageRequest
-    {
-        public string level;
-        public string text;
-    }
-
-    private const int RequestTimeoutSeconds = 150;
-
     public static event Action OnChatEnded;
 
     public bool IsRequestInProgress { get; private set; } = false;
 
-    [SerializeField] private string serverUrl = "http://localhost:8000/predict";
-    [Space(30)]
     [SerializeField] private TMP_InputField _inputField;
     [SerializeField] private Transform _contentTransform;
     [SerializeField] private ScrollRect _scrollRect;
@@ -35,6 +19,7 @@ public class MessageSpawner : MonoBehaviour
     [SerializeField] private GameObject _AIMessage;
     [SerializeField] private GameObject _spaceMessage;
     [Space(30)]
+    [Tooltip("pass_id уровня на сервере: tony_stark, subnautica, cyberpunk")]
     [SerializeField] private string _levelNameToServer;
 
     private InputSystem_Actions _inputSystem_Actions;
@@ -92,73 +77,34 @@ public class MessageSpawner : MonoBehaviour
         IsRequestInProgress = true;
         _inputField.interactable = false;
 
-        // Формируем URL с параметром msg
-        // UnityWebRequest.EscapeURL кодирует специальные символы для безопасной передачи
-        string escapedMessage = UnityWebRequest.EscapeURL(text);
-        string fullUrl = $"{serverUrl}";
-
-        Debug.Log($"Отправка запроса: {fullUrl}");
-
-        MessageRequest requestData = new()
+        // Запрос идёт через ApiClient: адрес сервера из config.json, токен игрока, разбор ошибок
+        ApiResult<PredictResponse> result = null;
+        if (ApiClient.Instance != null)
         {
-            level = level,
-            text = text
-        };
+            yield return ApiClient.Instance.Predict(level, text, r => result = r);
+        }
 
-        string jsonData = JsonUtility.ToJson(requestData);
-        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+        yield return StartCoroutine(GenereteSpace());
+        TextMeshProUGUI currentMessage = Instantiate(_AIMessage, _contentTransform).transform.GetComponentInChildren<TextMeshProUGUI>();
 
-        // Используем GET запрос вместо POST
-        using (UnityWebRequest www = new("http://localhost:8000/predict", "POST"))
+        if (result != null && result.Ok)
         {
-            www.uploadHandler = new UploadHandlerRaw(bodyRaw)
+            if (result.Data.passed)
             {
-                contentType = "application/json" // Crucial: tells the server it's JSON
-            };
-
-            www.downloadHandler = new DownloadHandlerBuffer();
-            // Без таймаута зависший сервер навсегда блокирует поле ввода (по умолчанию ожидание бесконечное).
-            // Больше, чем таймаут LLM на сервере (120 с), чтобы сервер успел ответить текстом ошибки.
-            www.timeout = RequestTimeoutSeconds;
-
-            yield return www.SendWebRequest();
-
-            if (www.result == UnityWebRequest.Result.Success)
-            {
-                yield return StartCoroutine(GenereteSpace());
-                try
-                {
-                    MessageResponse response = JsonUtility.FromJson<MessageResponse>(www.downloadHandler.text);
-
-                    TextMeshProUGUI currentMessage = Instantiate(_AIMessage, _contentTransform).transform.GetComponentInChildren<TextMeshProUGUI>();
-
-                    if (response.passed)
-                    {
-                        currentMessage.text = "Уровень пройден. Поздравляю!";
-                        OnChatEnded.Invoke();
-
-                    }
-                    else
-                    {
-                        currentMessage.text = response.text;
-
-                    }
-
-                    Debug.Log($"Получен ответ: {response.text}, прошел: {response.passed}");
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"Ошибка парсинга ответа: {e.Message}");
-                    Debug.Log($"Сырой ответ сервера: {www.downloadHandler.text}");
-                }
-                yield return StartCoroutine(GenereteSpace());
+                currentMessage.text = "Уровень пройден. Поздравляю!";
+                OnChatEnded?.Invoke();
             }
             else
             {
-                Debug.LogError($"Ошибка запроса: {www.error}");
-                Debug.LogError($"HTTP код: {www.responseCode}");
+                currentMessage.text = result.Data.text;
             }
+            Debug.Log($"Получен ответ: {result.Data.text}, прошел: {result.Data.passed}");
         }
+        else
+        {
+            currentMessage.text = DescribeError(result);
+        }
+        yield return StartCoroutine(GenereteSpace());
 
         IsRequestInProgress = false;
         _inputField.interactable = true;
@@ -166,6 +112,24 @@ public class MessageSpawner : MonoBehaviour
 
         if (Player.Instance != null)
             Player.Instance.CanAct = true;
+    }
+
+    private static string DescribeError(ApiResult<PredictResponse> result)
+    {
+        if (result == null) return "Нет связи с сервером.";
+        switch (result.StatusCode)
+        {
+            case 429:
+                return result.RetryAfterSeconds > 0
+                    ? $"{result.Error}. Попробуйте через {result.RetryAfterSeconds} с."
+                    : result.Error;
+            case 409:
+                return "Свободный промпт этого уровня ещё не открыт: сначала соберите паззл.";
+            case 401:
+                return "Нужно войти заново.";
+            default:
+                return result.Error;
+        }
     }
 
     private void SpawnMessage(InputAction.CallbackContext obj)

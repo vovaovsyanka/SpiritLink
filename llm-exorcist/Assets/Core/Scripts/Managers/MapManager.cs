@@ -1,4 +1,5 @@
 using System;
+using Core.Scripts.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,24 +32,13 @@ public class MapManager : MonoBehaviour
 
     private void Start()
     {
-        if(GameStateManager.State == GameState.map || GameStateManager.State == GameState.lvl1)
-        {
-            _lvl1Buton.interactable = true;
-            _lvl2Buton.interactable = false;
-            _lvl3Buton.interactable = false;
-        }
-        if (GameStateManager.State == GameState.lvl2)
-        {
-            _lvl1Buton.interactable = true;
-            _lvl2Buton.interactable = true;
-            _lvl3Buton.interactable = false;
-        }
-        if (GameStateManager.State == GameState.lvl3)
-        {
-            _lvl1Buton.interactable = true;
-            _lvl2Buton.interactable = true;
-            _lvl3Buton.interactable = true;
-        }
+        // Все миры открыты сразу: проходить можно в любом порядке, прогресс хранится на сервере
+        _lvl1Buton.interactable = true;
+        _lvl2Buton.interactable = true;
+        _lvl3Buton.interactable = true;
+
+        // Игрок, пройденные миры, сложность мира, выход
+        MapAccountPanel.Create();
     }
 
     private void Interact(SceneNames sceneName)

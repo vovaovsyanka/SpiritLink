@@ -19,6 +19,7 @@ from app.models import PHASES, UserGameState, UserPass
 from app.passwords import pick_secret
 from app.schemas import (
     ClueRequest,
+    JournalRequest,
     PassState,
     PhaseRequest,
     ProgressResponse,
@@ -32,6 +33,7 @@ router = APIRouter(tags=["game"])
 # Подсказки собирают в расследовании и после выхода из паззла (новые тоже сохраняются)
 CLUE_PHASES = ("investigation", "puzzle")
 MAX_CLUES_PER_PASS = 100
+MAX_JOURNAL_DIALOGUES_PER_PASS = 200
 
 
 def _check_pass_id(pass_id: str) -> None:
@@ -47,6 +49,7 @@ def pass_state(pass_id: str, passes: dict[str, UserPass]) -> PassState:
         phase=row.phase if row else "",
         completed=row is not None and row.completed_at is not None,
         collected_clues=list(row.collected_clues) if row else [],
+        journal=list(row.journal) if row else [],
     )
 
 
@@ -105,13 +108,14 @@ async def start_pass(
         secret, used = pick_secret(category, [])
         row = UserPass(
             user_id=user.id, pass_id=pass_id, phase="investigation",
-            collected_clues=[], secret=secret, used_secrets=used,
+            collected_clues=[], journal=[], secret=secret, used_secrets=used,
         )
         db.add(row)
     elif row.phase == "done":
         secret, used = pick_secret(category, list(row.used_secrets))
         row.phase = "investigation"
         row.collected_clues = []
+        row.journal = []
         row.secret = secret
         row.used_secrets = used
         row.started_at = func.now()
@@ -141,6 +145,24 @@ async def add_clue(
         if len(row.collected_clues) >= MAX_CLUES_PER_PASS:
             raise HTTPException(status.HTTP_409_CONFLICT, "Слишком много подсказок для одного прохождения")
         row.collected_clues = [*row.collected_clues, clue]
+
+    result = pass_state(pass_id, await _load_passes(db, user))
+    await db.commit()
+    return result
+
+
+@router.post("/passes/{pass_id}/journal", response_model=PassState)
+async def add_journal_dialogue(
+    pass_id: str, data: JournalRequest,
+    user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """Прочитанный разговор целиком (отправляется в конце диалога). Такой же разговор повторно не пишется."""
+    row = await _get_started_pass(db, user, pass_id)
+    dialogue = {"entries": [entry.model_dump() for entry in data.entries]}
+    if row.phase != "done" and dialogue not in row.journal:
+        if len(row.journal) >= MAX_JOURNAL_DIALOGUES_PER_PASS:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Журнал этого прохождения переполнен")
+        row.journal = [*row.journal, dialogue]
 
     result = pass_state(pass_id, await _load_passes(db, user))
     await db.commit()

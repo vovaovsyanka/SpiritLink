@@ -106,6 +106,8 @@ class UserPass(Base):
     phase: Mapped[str] = mapped_column(String(16), server_default="investigation")
     # Найденные подсказки: полный текст карточки паззла (puzzleText в Unity)
     collected_clues: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    # Журнал прочитанных разговоров: [{"entries": [{"name": ..., "text": ...}, ...]}, ...], без повторов
+    journal: Mapped[list[dict]] = mapped_column(JSONB, server_default="[]")
     # Слово-якорь: только на сервере, клиенту не отдаётся
     secret: Mapped[str] = mapped_column(Text)
     used_secrets: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
