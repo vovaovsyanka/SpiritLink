@@ -1,0 +1,8 @@
+# Достаточно окружения проекта (venv) или experiments/expenv. LLM запускаются через llama.cpp, torch и transformers нужны только BERT-шлюзам.
+huggingface_hub
+requests
+numpy
+pandas
+openpyxl
+torch
+transformers
