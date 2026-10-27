@@ -12,6 +12,7 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from app import settings
 from app.models import LOGIN_PATTERN
+from app.text_utils import clean_input
 
 PassId = Literal["tony_stark", "subnautica", "cyberpunk"]
 
@@ -110,6 +111,11 @@ class PredictRequest(BaseModel):
         description="Прохождение: tony_stark (кат. 3), subnautica (кат. 4), cyberpunk (кат. 5)",
     )
     text: str = Field(..., min_length=1, max_length=settings.PROMPT_MAX_LENGTH, description="Текст игрока")
+
+    @field_validator("text")
+    @classmethod
+    def clean_text(cls, value: str) -> str:
+        return clean_input(value)  # то же в пайплайне и в журнале попыток; NUL БД не принимает
 
 
 class PredictResponse(BaseModel):

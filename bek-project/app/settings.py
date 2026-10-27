@@ -14,35 +14,48 @@ if load_dotenv:
 
 MODELS_DIR = BASE_DIR / "models"
 STATIC_DIR = BASE_DIR / "static"
+LOGS_DIR = BASE_DIR / "logs"
 
-# ── Модели классификаторов ───────────────────────────────────────────────────
+# ── Общий BERT (опасно / безопасно) ──────────────────────────────────────────
+# В папке лежат и веса, и файлы токенайзера: сервис не ходит в Hugging Face (scripts/download_models.py).
 GENERAL_BERT_PATH = MODELS_DIR / "rosberta"
-GENERAL_BERT_TOKENIZER = "ai-forever/ru-en-RoSBERTa"
-
-LSTM_PATH = MODELS_DIR / "security_lstm_pytorch.pth"
-TFIDF_PATH = MODELS_DIR / "tfidf_classifier.pkl"
-BANNED_WORDS_PATH = MODELS_DIR / "banned_words.txt"
-
-# Для каждой категории (3, 4, 5) — отдельная дообученная модель.
-CATEGORY_MODEL_PATHS = {
-    category: MODELS_DIR / f"ru-en-RoSBERTa_{category}" for category in (3, 4, 5)
-}
-CATEGORY_TOKENIZER = GENERAL_BERT_TOKENIZER
-
 BERT_MAX_LENGTH = 256
+# cpu | cuda | auto. По умолчанию процессор: видеопамять нужна языковым моделям.
+BERT_DEVICE = os.getenv("BERT_DEVICE", "cpu")
 
-# ── LLM (Ollama) ─────────────────────────────────────────────────────────────
-OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:31b-cloud")
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "https://ollama.com/api/generate")
-LLM_MAX_TOKENS = 3000
+# ── LLM ──────────────────────────────────────────────────────────────────────
+# Бэкенд генерации: llamacpp — свои процессы llama-server на этой машине (работает без интернета).
+LLM_BACKEND = os.getenv("LLM_BACKEND", "llamacpp")
+LLM_DIR = MODELS_DIR / "llm"                       # GGUF-файлы: <ключ модели>.gguf
+TOOLS_DIR = BASE_DIR / "tools"                     # сюда ставится llama.cpp
+LLAMA_SERVER_PATH = os.getenv("LLAMA_SERVER_PATH", "")
+LLAMA_GPU_LAYERS = os.getenv("LLAMA_GPU_LAYERS", "")        # пусто — решает сам llama.cpp
+LLAMA_SLOTS = int(os.getenv("LLAMA_SLOTS", "0"))             # 0 — по умолчанию для каждой модели (app/llm/specs.py)
+LLAMA_EXTRA_ARGS = os.getenv("LLAMA_EXTRA_ARGS", "")         # дополнительные аргументы llama-server для всех моделей
+LLAMA_START_TIMEOUT_SEC = int(os.getenv("LLAMA_START_TIMEOUT_SEC", "900"))
 LLM_TIMEOUT_SEC = 120
-# Сколько запросов к Ollama может выполняться одновременно (остальные ждут в очереди)
-LLM_MAX_CONCURRENCY = int(os.getenv("LLM_MAX_CONCURRENCY", "16"))
+# Сколько запросов может ждать свободного слота модели; дальше игрок получает 429 с Retry-After
+LLM_MAX_QUEUE = int(os.getenv("LLM_MAX_QUEUE", "32"))
 
-# ── Заглушки для разработки (без весов моделей / без Ollama) ─────────────────
-STUB_MODELS = os.getenv("STUB_MODELS", "0") == "1"
-STUB_LLM = os.getenv("STUB_LLM", "0") == "1"
+# Параметры генерации (как в экспериментах, experiments/config.py)
+TEMPERATURE = 0.7
+TOP_P = 0.9
+CLASSIFIER_TEMPERATURE = 0.0       # шлюз категории отвечает детерминированно
+MAX_NEW_TOKENS = {"defender": 160, "mini": 110, "classifier": 12}
+
+# Модель шлюза категории и мини-LLM; защитники по ступеням (модель, вариант промпта).
+# Выбор и обоснование: experiments/REPORT.md.
+SERVICE_MODEL = "yandexgpt5-lite-8b"
+FINAL_LADDER: dict[int, tuple[str, str]] = {
+    1: ("qwen3-4b", "naive"),
+    2: ("qwen3.5-9b", "naive"),
+    3: ("qwen3.5-9b", "weak"),
+    4: ("gemma4-12b", "weak"),
+}
+
+# ── Заглушки для разработки (без весов моделей / без LLM) ────────────────────
+STUB_MODELS = os.getenv("STUB_MODELS", "0") == "1"   # вместо общего BERT — правила по ключевым словам
+STUB_LLM = os.getenv("STUB_LLM", "0") == "1"         # вместо языковых моделей — заглушка
 
 # ── База данных ──────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv(
@@ -54,11 +67,13 @@ SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
 # Через запятую; "*" — любой origin (токен передаётся в заголовке, cookie не используются)
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 
-# ── Лимиты попыток (каждая попытка в свободном промпте — платный вызов LLM) ──
+# ── Лимиты попыток (каждая попытка в свободном промпте — работа языковой модели) ──
 ATTEMPTS_PER_HOUR = int(os.getenv("ATTEMPTS_PER_HOUR", "30"))
 ATTEMPTS_PER_DAY = int(os.getenv("ATTEMPTS_PER_DAY", "200"))
 MIN_SECONDS_BETWEEN_ATTEMPTS = float(os.getenv("MIN_SECONDS_BETWEEN_ATTEMPTS", "3"))
-PROMPT_MAX_LENGTH = 2000
+PROMPT_MAX_LENGTH = 5000                      # защита от огромных тел запросов: больше — 422 от API
+INPUT_MAX_CHARS = 800                         # больше (и до PROMPT_MAX_LENGTH) — призрак просит говорить короче, модели не вызываются
+REPLY_CACHE_SIZE = int(os.getenv("REPLY_CACHE_SIZE", "2000"))   # повторы запросов отвечаются из кэша
 
 # ── Игра ─────────────────────────────────────────────────────────────────────
 # Прохождение (уровень) → категория атак. Все уровни открыты сразу, порядок — только для вывода.
@@ -69,12 +84,11 @@ LEVEL_TO_CATEGORY: dict[str, int] = {
 }
 PASS_IDS: tuple[str, ...] = tuple(LEVEL_TO_CATEGORY)
 
-# Уровень мира (выбирает игрок) → классификатор на третьем шаге каскада:
-# 1 — словарь, 2 — TF-IDF, 3 — LSTM, 4 — RoSBERTa. Загружаются те, чьи файлы есть в models/.
+# Уровень мира (выбирает игрок) = ступень защитника из FINAL_LADDER.
 WORLD_LEVELS: dict[int, str] = {
-    1: "Словарь",
-    2: "TF-IDF",
-    3: "LSTM",
-    4: "RoSBERTa",
+    1: "Простой",
+    2: "Базовый",
+    3: "Средний",
+    4: "Сложный",
 }
 DEFAULT_WORLD_LEVEL = 2

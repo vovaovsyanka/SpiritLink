@@ -84,7 +84,7 @@ class UserGameState(Base):
     __table_args__ = (CheckConstraint("world_level BETWEEN 1 AND 4", name="world_level_range"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    # Сложность классификатора на третьем шаге каскада, выбирает игрок (settings.WORLD_LEVELS)
+    # Уровень мира = ступень защитника (settings.FINAL_LADDER), выбирает игрок (settings.WORLD_LEVELS)
     world_level: Mapped[int] = mapped_column(SmallInteger, server_default="2")
     current_pass_id: Mapped[Optional[str]] = mapped_column(String(32))
     updated_at: Mapped[datetime] = mapped_column(
@@ -135,10 +135,12 @@ class Attempt(Base):
     # NULL — песочница вне сюжета
     pass_id: Mapped[Optional[str]] = mapped_column(String(32))
     prompt_text: Mapped[str] = mapped_column(Text)
-    # NULL — LLM не вызывалась (слово введено сразу или запрос отсёк классификатор)
+    # Ответ языковой модели (мини-LLM или защитника, в том числе из кэша повторов).
+    # NULL — модель не ответила (слово введено сразу, запрос отсёк шлюз или гигиена)
     llm_response: Mapped[Optional[str]] = mapped_column(Text)
     success: Mapped[bool] = mapped_column(Boolean)
-    # Этапы каскада: модель, решение, вероятность, время; blocked_by; llm_ms
+    # Трасса пайплайна: tier, stages (этап, модель, решение, время, токены), blocked_by (hygiene | gate),
+    # leaked (слово есть в ответе защитника), cache_hit, error
     classifier_output: Mapped[dict] = mapped_column(JSONB)
     world_level: Mapped[int] = mapped_column(SmallInteger)
     latency_ms: Mapped[int] = mapped_column(Integer)

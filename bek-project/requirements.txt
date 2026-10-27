@@ -3,22 +3,21 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 
-# ML / Deep Learning
-# ВАЖНО: для видеокарт RTX 50xx (Blackwell, sm_120) нужен PyTorch >= 2.7 со сборкой CUDA 12.8:
+# Общий BERT (по умолчанию работает на процессоре, подойдёт и CPU-сборка torch)
+# Для BERT на видеокартах RTX 50xx (Blackwell, sm_120, BERT_DEVICE=cuda) нужен PyTorch >= 2.7 со сборкой CUDA 12.8:
 #   pip install torch --index-url https://download.pytorch.org/whl/cu128
 # Старые версии (например 2.1.2) падают с "FATAL: kernel fmha_cutlass... built for sm37".
 --extra-index-url https://download.pytorch.org/whl/cu118 # либо /cu128
 
 torch>=2.7
 transformers>=4.50
-numpy>=1.26
-scikit-learn==1.7.1   # версия, которой обучены модели в models/*.pkl
 
-# Data processing
-pandas>=2.1
-
-# HTTP-клиент для запросов к Ollama (асинхронный)
+# Языковые модели запускает llama.cpp (llama-server): httpx — асинхронный клиент к нему, psutil — чистка забытых процессов
 httpx>=0.27
+psutil>=5.9
+
+# Только для scripts/download_models.py (разовая подготовка файлов; transformers тянет её и сам)
+huggingface_hub>=0.30
 
 # База данных (PostgreSQL) и миграции
 sqlalchemy[asyncio]>=2.0

@@ -14,6 +14,7 @@ from app import auth, game, settings
 from app.auth import CurrentUser, get_current_user
 from app.db import SessionLocal, engine
 from app.limits import check_attempt_limits, user_request_slot
+from app.llm import LLMBusy
 from app.models import Attempt, UserGameState, UserPass
 from app.pipeline import ProcessingPipeline
 from app.schemas import PredictRequest, PredictResponse
@@ -23,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Инициализация пайплайна...")
-    app.state.pipeline = ProcessingPipeline()
+    logger.info("Инициализация пайплайна (загрузка BERT и языковых моделей, это занимает время)...")
+    app.state.pipeline = await ProcessingPipeline.create()
     logger.info(
         "Пайплайн успешно инициализирован, уровни мира: %s", app.state.pipeline.available_world_levels
     )
@@ -79,12 +80,19 @@ async def predict(
             secret = row.secret
 
         start = time.perf_counter()
-        result = await pipeline.process(
-            text=data.text,
-            category=settings.LEVEL_TO_CATEGORY[data.pass_id],
-            secret=secret,
-            world_level=world_level,
-        )
+        try:
+            result = await pipeline.process(
+                text=data.text,
+                category=settings.LEVEL_TO_CATEGORY[data.pass_id],
+                secret=secret,
+                world_level=world_level,
+            )
+        except LLMBusy as e:  # попытка не состоялась: в attempts не пишется и в лимит не идёт
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Сервер сейчас занят, попробуйте ещё раз",
+                headers={"Retry-After": str(e.retry_after)},
+            )
         latency_ms = round((time.perf_counter() - start) * 1000)
 
         async with SessionLocal() as db:
@@ -120,7 +128,7 @@ async def predict(
 @app.get("/health")
 def health_check(request: Request):
     pipeline = getattr(request.app.state, "pipeline", None)
-    return {"status": "ok", "pipeline_ready": pipeline is not None}
+    return {"status": "ok", "pipeline_ready": pipeline is not None, **(pipeline.health() if pipeline else {})}
 
 
 if settings.STATIC_DIR.is_dir():
