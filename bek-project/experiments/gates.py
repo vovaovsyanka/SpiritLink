@@ -1,6 +1,6 @@
 """
 BERT-шлюзы проекта: общий классификатор (опасно / безопасно) и категорийные (целевая категория / нет).
-Веса берутся из models/ проекта (пути из app/settings.py). Модели грузятся по одной и выгружаются.
+Веса берутся из models/ проекта (пути из config.py). Модели грузятся по одной и выгружаются.
 """
 
 import gc
@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-import config  # noqa: F401  (добавляет корень проекта в sys.path)
+import config  # добавляет корень проекта в sys.path
 from app import settings
 from app.text_utils import clean_for_bert
 
@@ -41,8 +41,8 @@ def _probs(model_path, tokenizer_name: str, texts: list[str], batch_size: int = 
 
 
 def run_general(texts: list[str]) -> np.ndarray:
-    return _probs(settings.GENERAL_BERT_PATH, settings.GENERAL_BERT_TOKENIZER, texts)
+    return _probs(config.GENERAL_BERT_PATH, config.BERT_TOKENIZER, texts)
 
 
 def run_category(ghost_id: int, texts: list[str]) -> np.ndarray:
-    return _probs(settings.CATEGORY_MODEL_PATHS[ghost_id], settings.CATEGORY_TOKENIZER, texts)
+    return _probs(config.CATEGORY_BERT_PATHS[ghost_id], config.BERT_TOKENIZER, texts)

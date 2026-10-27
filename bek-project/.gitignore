@@ -54,4 +54,8 @@ logs/
 
 # Custom
 models/
+tools/
 scripts/test_results.csv
+
+# Tests
+.pytest_cache/

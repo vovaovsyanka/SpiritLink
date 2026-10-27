@@ -107,7 +107,7 @@ class Pipeline:
 
     def general_bert(self) -> Bert:
         if self.general is None:
-            self.general = Bert(settings.GENERAL_BERT_PATH, settings.GENERAL_BERT_TOKENIZER)
+            self.general = Bert(config.GENERAL_BERT_PATH, config.BERT_TOKENIZER)
         return self.general
 
     def close(self) -> None:

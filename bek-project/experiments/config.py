@@ -54,6 +54,12 @@ def set_run(name: str) -> None:
 
 set_run(DEFAULT_RUN)
 
+# ── BERT-шлюзы проекта (в приложении остался только общий BERT; категорийные нужны этим экспериментам) ─────
+MODELS_DIR = PROJECT_DIR / "models"
+GENERAL_BERT_PATH = MODELS_DIR / "rosberta"
+BERT_TOKENIZER = "ai-forever/ru-en-RoSBERTa"   # токенайзер с Hugging Face (экспериментам нужен интернет)
+CATEGORY_BERT_PATHS = {category: MODELS_DIR / "unused" / f"ru-en-RoSBERTa_{category}" for category in (3, 4, 5)}   # приложение их не использует
+
 # ── Игра ─────────────────────────────────────────────────────────────────────
 GHOST_IDS = (3, 4, 5)            # категории = идентификаторы призраков (app/ghosts.py)
 ATTACK_CATEGORIES = (3, 4, 5, 9)

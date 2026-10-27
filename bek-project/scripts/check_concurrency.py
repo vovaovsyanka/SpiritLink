@@ -4,16 +4,16 @@
 Два режима:
 
   python scripts/check_concurrency.py
-      Без сервера и БД. Поднимает пайплайн в этом же процессе с настоящими классификаторами,
-      а вызов LLM подменяет «ответом через 3 секунды». Если запросы обрабатываются
+      Без сервера и БД. Поднимает пайплайн в этом же процессе с настоящим BERT,
+      а языковые модели подменяет «ответом через 3 секунды». Если запросы обрабатываются
       параллельно, N запросов займут ~3 с, а не N * 3 с.
 
   python scripts/check_concurrency.py --url http://localhost:8000
-      Против запущенного сервера и настоящей LLM: сравнивает время одного запроса
+      Против запущенного сервера и настоящих языковых моделей: сравнивает время одного запроса
       со временем N одновременных. У одного игрока одновременно идёт только один запрос,
       поэтому скрипт регистрирует N + 2 временных игрока (логины cc_<метка>_<i>, остаются в БД).
 
-Параметры: -n число одновременных запросов (по умолчанию 5), --delay задержка заглушки LLM.
+Параметры: -n число одновременных запросов (по умолчанию 5), --delay задержка заглушки модели.
 """
 
 import argparse
@@ -59,21 +59,34 @@ def report(n: int, single: float, total: float, latencies: list[float]) -> bool:
 
 async def run_in_process(n: int, delay: float) -> bool:
     from app import settings
+    from app.llm.backend import Generation
+    from app.llm.stub import StubBackend
+    from app.llm.specs import required_models
     from app.pipeline import ProcessingPipeline
 
-    pipeline = ProcessingPipeline()
     llm_calls = 0
 
-    async def fake_post(url: str, **kwargs) -> httpx.Response:
-        """Вместо сети: ответ LLM через delay секунд. Семафор и разбор ответа остаются настоящими."""
-        nonlocal llm_calls
-        llm_calls += 1
-        await asyncio.sleep(delay)
-        return httpx.Response(
-            200, json={"response": "заглушка", "eval_count": 1}, request=httpx.Request("POST", url)
-        )
+    class DelayBackend(StubBackend):
+        """Вместо языковых моделей: ответ через delay секунд. Очередь, разбор ответа и пайплайн остаются настоящими."""
 
-    pipeline.llm_client._client.post = fake_post
+        async def generate(self, model, system, user, **kwargs) -> Generation:
+            nonlocal llm_calls
+            llm_calls += 1
+            await asyncio.sleep(delay)
+            return Generation("заглушка")
+
+    if settings.STUB_MODELS:
+        from app.classifiers.stub import StubGeneral
+
+        general_bert = StubGeneral()
+    else:
+        from app.classifiers.transformer import RoSBERTa
+
+        general_bert = RoSBERTa()
+    backend = DelayBackend()
+    await backend.start(required_models())
+    pipeline = ProcessingPipeline(backend, general_bert)
+
     category = settings.LEVEL_TO_CATEGORY[PASS_ID]
     world_level = pipeline.available_world_levels[0]
 
@@ -81,9 +94,9 @@ async def run_in_process(n: int, delay: float) -> bool:
         await pipeline.process(f"{SAFE_TEXT} #{i}", category, secret="ЗАГЛУШКА", world_level=world_level)
 
     try:
-        await send(0)  # прогрев моделей
+        await send(100)  # прогрев моделей; тексты разные, иначе ответит кэш повторов
         start = time.perf_counter()
-        await send(0)
+        await send(101)
         single = time.perf_counter() - start
         llm_calls = 0
 
@@ -91,9 +104,9 @@ async def run_in_process(n: int, delay: float) -> bool:
     finally:
         await pipeline.aclose()
 
-    print(f"Вызовов LLM-заглушки за прогон: {llm_calls} из {n}")
+    print(f"Вызовов языковой модели (заглушки) за прогон: {llm_calls} из {n}")
     if llm_calls < n:
-        print("ВНИМАНИЕ: часть запросов классификатор остановил до LLM — замените SAFE_TEXT на другой")
+        print("ВНИМАНИЕ: часть запросов остановили до модели — замените SAFE_TEXT на другой")
     return report(n, single, total, latencies)
 
 
@@ -132,7 +145,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--url", help="адрес запущенного сервера; без него пайплайн поднимается в этом процессе")
     parser.add_argument("-n", type=int, default=5, help="число одновременных запросов")
-    parser.add_argument("--delay", type=float, default=3.0, help="задержка LLM-заглушки, с (только без --url)")
+    parser.add_argument("--delay", type=float, default=3.0, help="задержка заглушки модели, с (только без --url)")
     args = parser.parse_args()
 
     if args.url:

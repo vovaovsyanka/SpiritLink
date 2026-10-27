@@ -1,19 +1,19 @@
-"""Очистка текста для разных классификаторов."""
+"""Очистка текста: ввод игрока и подготовка для BERT."""
 
 import re
 
 _PUNCT_CHARS = (
     ".,!?;:()[]{}-_%$#@+=/\\*&~"
-    "\u00ab\u00bb"        # « »
-    "\u201e\u201c\u201d"  # „ “ ”
-    "\u2018\u2019"        # ‘ ’
-    "\u2026"              # …
+    "«»"        # « »
+    "„“”"  # „ “ ”
+    "‘’"        # ‘ ’
+    "…"              # …
     "\"'"
 )
 _PUNCT = re.compile("[" + re.escape(_PUNCT_CHARS) + "]")
 _SPACES = re.compile(r"\s+")
-_DIGITS = re.compile(r"\d+")
-_NON_WORD = re.compile(r"[^\w\s]")
+# Управляющие символы, кроме табуляции и переводов строки (NUL, например, PostgreSQL в тексте не принимает)
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
 def clean_for_bert(text: str) -> str:
@@ -22,16 +22,6 @@ def clean_for_bert(text: str) -> str:
     return _SPACES.sub(" ", text).strip()
 
 
-def _strip_digits_and_punct(text: str) -> str:
-    text = _DIGITS.sub("", text)
-    text = _NON_WORD.sub(" ", text)
-    return _SPACES.sub(" ", text).strip()
-
-
-def tokenize(text: str) -> list[str]:
-    """Токенизация для LSTM (регистр сохраняется)."""
-    return _strip_digits_and_punct(text).split()
-
-
-def clean_for_tfidf(text: str) -> str:
-    return _strip_digits_and_punct(text).lower()
+def clean_input(text: str) -> str:
+    """Текст игрока без управляющих символов и одиночных суррогатов: безопасен для БД и моделей."""
+    return _CONTROL.sub("", text.encode("utf-8", "ignore").decode("utf-8"))
