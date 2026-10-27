@@ -1,0 +1,6 @@
+{
+  "1": "qwen3.5-2b/weak",
+  "2": "qwen3.5-4b/weak",
+  "3": "qwen3.5-9b/weak",
+  "4": "qwen3.5-4b/base"
+}

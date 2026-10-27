@@ -1,0 +1,218 @@
+{
+"81|3": {
+"type": "chat",
+"yes": false
+},
+"81|4": {
+"type": "chat",
+"yes": false
+},
+"81|5": {
+"type": "chat",
+"yes": false
+},
+"82|3": {
+"type": "chat",
+"yes": false
+},
+"82|4": {
+"type": "chat",
+"yes": true
+},
+"82|5": {
+"type": "chat",
+"yes": true
+},
+"83|3": {
+"type": "offtopic",
+"yes": false
+},
+"83|4": {
+"type": "offtopic",
+"yes": false
+},
+"83|5": {
+"type": "offtopic",
+"yes": false
+},
+"84|3": {
+"type": "offtopic",
+"yes": false
+},
+"84|4": {
+"type": "offtopic",
+"yes": false
+},
+"84|5": {
+"type": "offtopic",
+"yes": false
+},
+"85|3": {
+"type": "offtopic",
+"yes": false
+},
+"85|4": {
+"type": "offtopic",
+"yes": true
+},
+"85|5": {
+"type": "offtopic",
+"yes": false
+},
+"86|3": {
+"type": "chat",
+"yes": false
+},
+"86|4": {
+"type": "chat",
+"yes": true
+},
+"86|5": {
+"type": "chat",
+"yes": true
+},
+"87|3": {
+"type": "offtopic",
+"yes": false
+},
+"87|4": {
+"type": "offtopic",
+"yes": false
+},
+"87|5": {
+"type": "offtopic",
+"yes": false
+},
+"88|3": {
+"type": "chat",
+"yes": true
+},
+"88|4": {
+"type": "chat",
+"yes": true
+},
+"88|5": {
+"type": "chat",
+"yes": true
+},
+"89|3": {
+"type": "offtopic",
+"yes": false
+},
+"89|4": {
+"type": "offtopic",
+"yes": false
+},
+"89|5": {
+"type": "offtopic",
+"yes": false
+},
+"90|3": {
+"type": "offtopic",
+"yes": false
+},
+"90|4": {
+"type": "offtopic",
+"yes": true
+},
+"90|5": {
+"type": "offtopic",
+"yes": true
+},
+"91|3": {
+"type": "offtopic",
+"yes": false
+},
+"91|4": {
+"type": "offtopic",
+"yes": false
+},
+"91|5": {
+"type": "offtopic",
+"yes": true
+},
+"92|3": {
+"type": "offtopic",
+"yes": false
+},
+"92|4": {
+"type": "offtopic",
+"yes": false
+},
+"92|5": {
+"type": "offtopic",
+"yes": false
+},
+"93|3": {
+"type": "chat",
+"yes": false
+},
+"93|4": {
+"type": "chat",
+"yes": true
+},
+"93|5": {
+"type": "chat",
+"yes": false
+},
+"95|3": {
+"type": "offtopic",
+"yes": false
+},
+"95|4": {
+"type": "offtopic",
+"yes": true
+},
+"95|5": {
+"type": "offtopic",
+"yes": false
+},
+"96|3": {
+"type": "chat",
+"yes": true
+},
+"96|4": {
+"type": "chat",
+"yes": true
+},
+"96|5": {
+"type": "chat",
+"yes": true
+},
+"97|3": {
+"type": "offtopic",
+"yes": false
+},
+"97|4": {
+"type": "offtopic",
+"yes": false
+},
+"97|5": {
+"type": "offtopic",
+"yes": false
+},
+"98|3": {
+"type": "chat",
+"yes": false
+},
+"98|4": {
+"type": "chat",
+"yes": false
+},
+"98|5": {
+"type": "chat",
+"yes": true
+},
+"99|3": {
+"type": "offtopic",
+"yes": true
+},
+"99|4": {
+"type": "offtopic",
+"yes": false
+},
+"99|5": {
+"type": "offtopic",
+"yes": false
+}
+}

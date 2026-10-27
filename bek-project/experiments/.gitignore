@@ -1,0 +1,6 @@
+expenv/
+.env
+tools/
+__pycache__/
+results/*/llama_logs/
+results/*/errors.log
