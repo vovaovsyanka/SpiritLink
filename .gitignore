@@ -19,7 +19,10 @@ venv/
 .venv/
 env/
 *.egg-info/
-Build/
+
+# ── Сборки игры (Unity → Build Profiles → путь сборки: builds/WebGL) ────────
+# Создаются заново при каждой сборке, в git не нужны.
+/builds/
 
 # ── Unity (страховка; основные правила в llm-exorcist/.gitignore) ────────────
 llm-exorcist/[Ll]ibrary/

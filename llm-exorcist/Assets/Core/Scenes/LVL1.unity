@@ -2540,7 +2540,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1095566339964294882, guid: 1a88c8ce063cb0969b51588779fa8679, type: 3}
       propertyPath: '_puzzleOrders.Array.data[0]'
-      value: 2135
+      value: 1234
       objectReference: {fileID: 0}
     - target: {fileID: 1095566339964294882, guid: 1a88c8ce063cb0969b51588779fa8679, type: 3}
       propertyPath: '_puzzleOrders.Array.data[1]'
@@ -2708,7 +2708,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7677648226939725222, guid: 1a88c8ce063cb0969b51588779fa8679, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -724.93726
+      value: -620
       objectReference: {fileID: 0}
     - target: {fileID: 7696002801343710842, guid: 1a88c8ce063cb0969b51588779fa8679, type: 3}
       propertyPath: m_LocalPosition.x

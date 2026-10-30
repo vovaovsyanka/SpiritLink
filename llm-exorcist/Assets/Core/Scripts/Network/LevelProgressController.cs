@@ -47,6 +47,8 @@ namespace Core.Scripts.Network
             var go = new GameObject("LevelProgress");
             SceneManager.MoveGameObjectToScene(go, scene);
             go.AddComponent<LevelProgressController>()._passId = passId;
+
+            BackToMapButton.Create(scene);
         }
 
         private void OnEnable()

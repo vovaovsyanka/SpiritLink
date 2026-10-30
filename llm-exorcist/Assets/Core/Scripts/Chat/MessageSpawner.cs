@@ -68,6 +68,7 @@ public class MessageSpawner : MonoBehaviour
             yield return new WaitForEndOfFrame();
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_contentTransform);
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_scrollRect.transform);
+            _scrollRect.verticalNormalizedPosition = 0f;
             yield return new WaitForEndOfFrame();
         }
 
@@ -85,25 +86,26 @@ public class MessageSpawner : MonoBehaviour
         }
 
         yield return StartCoroutine(GenereteSpace());
-        TextMeshProUGUI currentMessage = Instantiate(_AIMessage, _contentTransform).transform.GetComponentInChildren<TextMeshProUGUI>();
 
+        string reply;
         if (result != null && result.Ok)
         {
             if (result.Data.passed)
             {
-                currentMessage.text = "Уровень пройден. Поздравляю!";
+                reply = "Уровень пройден. Поздравляю!";
                 OnChatEnded?.Invoke();
             }
             else
             {
-                currentMessage.text = result.Data.text;
+                reply = result.Data.text;
             }
             Debug.Log($"Получен ответ: {result.Data.text}, прошел: {result.Data.passed}");
         }
         else
         {
-            currentMessage.text = DescribeError(result);
+            reply = DescribeError(result);
         }
+        AddMessage(_AIMessage, reply);
         yield return StartCoroutine(GenereteSpace());
 
         IsRequestInProgress = false;
@@ -134,19 +136,48 @@ public class MessageSpawner : MonoBehaviour
 
     private void SpawnMessage(InputAction.CallbackContext obj)
     {
-        if (_inputField.text.Length > 0)
+        // пока идёт запрос, новое сообщение не отправится — и в чате его показывать не нужно
+        if (IsRequestInProgress || string.IsNullOrWhiteSpace(_inputField.text)) return;
+
+        string text = _inputField.text;
+        AddMessage(_myMessage, text);
+        SendMessageToServer(text);
+        _inputField.text = "";
+    }
+
+    /// <summary>Добавляет сообщение в чат, пересчитывает его размер и прокручивает чат к нему.</summary>
+    private void AddMessage(GameObject prefab, string text)
+    {
+        var message = Instantiate(prefab, _contentTransform);
+        message.GetComponentInChildren<TextMeshProUGUI>().text = text;
+
+        // Блок сообщения — несколько вложенных ContentSizeFitter. За один общий пересчёт вложенные блоки
+        // читают ещё старые размеры детей и выходят короче текста, поэтому считаем снизу вверх.
+        RebuildBottomUp((RectTransform)message.transform);
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_contentTransform);
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_scrollRect.transform);
+        _scrollRect.verticalNormalizedPosition = 0f;
+
+        StartCoroutine(ScrollToBottomNextFrame());
+    }
+
+    private static void RebuildBottomUp(RectTransform rect)
+    {
+        foreach (Transform child in rect)
         {
-            TextMeshProUGUI currentMessage = Instantiate(_myMessage, _contentTransform).transform.GetComponentInChildren<TextMeshProUGUI>();
-            currentMessage.text = _inputField.text;
-
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_contentTransform);
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_scrollRect.transform);
-
-            SendMessageToServer(_inputField.text);
-
-            _inputField.text = "";
-
-            _scrollRect.verticalNormalizedPosition = 0f;
+            if (child is RectTransform childRect)
+            {
+                RebuildBottomUp(childRect);
+            }
         }
+        LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+    }
+
+    /// <summary>Подстраховка: после обработки разметки Unity в конце кадра высота контента ещё может измениться.</summary>
+    private IEnumerator ScrollToBottomNextFrame()
+    {
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+        _scrollRect.verticalNormalizedPosition = 0f;
     }
 }
