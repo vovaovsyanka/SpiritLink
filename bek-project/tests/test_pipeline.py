@@ -7,9 +7,17 @@ import pytest
 
 from app import settings
 from app.classifiers.stub import StubGeneral
+from app.llm import prompts
 from app.llm.backend import LLMBusy
 from app.llm.specs import required_models
-from app.pipeline import ProcessingPipeline, _LRU
+from app.pipeline import (
+    EMPTY_INPUT_REPLIES,
+    EMPTY_REPLY_TEXT,
+    LONG_INPUT_REPLIES,
+    NO_WORDS_REPLIES,
+    ProcessingPipeline,
+    _LRU,
+)
 from helpers import BARE_REQUEST, BENIGN, SOCIAL_ATTACK, TECH_ATTACK, RecordingBackend
 
 SECRET = "ФЕНИКС"
@@ -37,25 +45,35 @@ async def test_benign_goes_to_mini_llm_without_password(pipeline, backend):
     assert [c["purpose"] for c in backend.calls] == ["mini"]
     assert backend.calls[0]["model"] == settings.SERVICE_MODEL
     assert SECRET not in backend.calls[0]["system"] + backend.calls[0]["user"]
-    assert result.llm_response == result.text and not result.passed
+    assert result.record.model_response == result.text and not result.passed
     assert result.trace["blocked_by"] is None and result.trace["leaked"] is False
+    record = result.record                                  # безобидный запрос: шлюз не запускался, отвечает мини-LLM
+    assert record.prompt_text == BENIGN and record.bert_dangerous is False and 0 <= record.bert_probability <= 1
+    assert record.gate_model is None and record.gate_topics is None and record.category_match is None
+    assert record.reply_model == settings.SERVICE_MODEL and record.leaked is False and record.leak_kind is None
+    assert record.cache_hit is False
 
 
 async def test_bare_request_is_stopped_by_gate_without_defender(pipeline, backend):
     result = await ask(pipeline, BARE_REQUEST)
     assert [c["purpose"] for c in backend.calls] == ["classifier"]
     assert result.trace["blocked_by"] == "gate"
-    assert result.llm_response is None
-    assert settings.SERVICE_MODEL and "Угрозы" in result.text
+    assert result.text in prompts.rejection_variants(3, {1})
+    record = result.record                                  # шлюз отказал: ответа модели и проверки утечки нет
+    assert record.bert_dangerous is True and record.gate_model == settings.SERVICE_MODEL
+    assert record.gate_topics == [1] and record.category_match is False
+    assert record.reply_model is None and record.model_response is None and record.leaked is None
 
 
 async def test_wrong_category_is_stopped_right_category_reaches_defender(pipeline, backend):
     wrong = await ask(pipeline, SOCIAL_ATTACK, category=3)          # социальный приём у технического призрака
     assert wrong.trace["blocked_by"] == "gate" and not backend.calls_for("defender")
-    assert "Такой подход на меня не действует" in wrong.text
+    assert wrong.text in prompts.rejection_variants(3, {4})
+    assert wrong.record.gate_topics == [4] and wrong.record.category_match is False
 
     right = await ask(pipeline, SOCIAL_ATTACK, category=4)
     assert right.trace["blocked_by"] is None and len(backend.calls_for("defender")) == 1
+    assert right.record.gate_topics == [4] and right.record.category_match is True
 
 
 async def test_defender_gets_password_and_leak_is_flagged(pipeline, backend):
@@ -64,6 +82,11 @@ async def test_defender_gets_password_and_leak_is_flagged(pipeline, backend):
     assert SECRET in defender["system"]
     assert result.trace["leaked"] is True and not result.passed        # проговорился, но уровень не пройден без ввода слова
     assert any(stage["stage"] == "leakcheck" and stage["leaked"] for stage in result.trace["stages"])
+    record = result.record
+    assert record.bert_dangerous is True and record.gate_topics == [3] and record.category_match is True
+    assert record.reply_model == settings.FINAL_LADDER[2][0] and SECRET in record.model_response     # модель ответа ≠ модель шлюза
+    assert record.gate_model == settings.SERVICE_MODEL and record.gate_model != record.reply_model
+    assert record.leaked is True and record.leak_kind == "plain"
 
 
 @pytest.mark.parametrize("level", [1, 2, 3, 4])
@@ -84,6 +107,7 @@ async def test_exact_word_passes_without_any_model_call(pipeline, backend):
     for text in (SECRET, " феникс ", "Феникс\n"):
         result = await ask(pipeline, text)
         assert result.passed and result.text == "" and result.trace["exact_match"] is True
+        assert result.record is None                            # ввод слова в журнал не пишется
     assert backend.calls == []
 
 
@@ -97,18 +121,25 @@ async def test_word_inside_a_sentence_does_not_pass(pipeline):
 
 
 # ── гигиена ──────────────────────────────────────────────────────────────────
-@pytest.mark.parametrize("text, expected", [
-    ("   ", "молчишь"),
-    ("а" * (settings.INPUT_MAX_CHARS + 1), "короче"),
-    ("а" * 5000, "короче"),
-    ("?!... --- ***", "не разбираю"),
-    ("\x00\x01", "молчишь"),
+@pytest.mark.parametrize("text, replies", [
+    ("   ", EMPTY_INPUT_REPLIES),
+    ("а" * (settings.INPUT_MAX_CHARS + 1), LONG_INPUT_REPLIES),
+    ("а" * 5000, LONG_INPUT_REPLIES),
+    ("?!... --- ***", NO_WORDS_REPLIES),
+    ("\x00\x01", EMPTY_INPUT_REPLIES),
 ])
-async def test_hygiene_rejects_without_calling_models(pipeline, backend, text, expected):
+async def test_hygiene_rejects_without_calling_models(pipeline, backend, text, replies):
     result = await ask(pipeline, text)
-    assert expected in result.text
-    assert result.trace["blocked_by"] == "hygiene" and result.llm_response is None
+    assert result.text in replies
+    assert result.trace["blocked_by"] == "hygiene" and result.record is None       # в журнал не пишется
     assert backend.calls == []
+
+
+@pytest.mark.parametrize("replies", [EMPTY_INPUT_REPLIES, LONG_INPUT_REPLIES, NO_WORDS_REPLIES])
+async def test_hygiene_replies_vary(pipeline, replies):
+    assert len(set(replies)) >= 3
+    texts = {pipeline._hygiene(text) for text in ("", "а" * 5000, "?!") for _ in range(60)}
+    assert set(replies) <= texts
 
 
 async def test_text_at_the_limit_is_processed(pipeline, backend):
@@ -134,7 +165,12 @@ async def test_repeat_is_answered_from_cache_without_models(pipeline, backend):
     second = await ask(pipeline, TECH_ATTACK.upper())             # регистр не важен
     assert len(backend.calls) == calls
     assert second.trace["cache_hit"] is True and second.text == first.text
-    assert second.llm_response == first.llm_response and second.trace["leaked"] == first.trace["leaked"]
+    assert second.record.model_response == first.record.model_response and second.trace["leaked"] == first.trace["leaked"]
+    assert first.record.cache_hit is False and second.record.cache_hit is True
+    assert second.record.prompt_text == TECH_ATTACK.upper()          # в журнал идёт текст игрока, а не первого запроса
+    assert (second.record.gate_topics, second.record.reply_model, second.record.leaked) == (
+        first.record.gate_topics, first.record.reply_model, first.record.leaked
+    )
 
 
 async def test_cache_is_separate_per_word_level_and_category(pipeline, backend):
@@ -187,22 +223,26 @@ async def test_model_error_becomes_service_text_and_is_not_cached(pipeline, back
     backend.fail = True
     broken = await ask(pipeline, BENIGN)
     assert broken.text.startswith("Сервис временно недоступен") and broken.trace["error"] == "LLMError"
-    assert broken.llm_response is None
+    assert broken.record is None                                    # сбой сервиса в журнал не пишется
     backend.fail = False
     assert (await ask(pipeline, BENIGN)).trace.get("error") is None      # после починки ответ настоящий
 
 
-async def test_empty_model_reply_is_replaced(pipeline, backend):
+async def test_empty_model_reply_is_replaced_and_not_cached(pipeline, backend):
     backend.reply = "   "
     result = await ask(pipeline, BENIGN)
-    assert result.text == "Дух молчит." and result.trace["empty_reply"] is True
+    assert result.text == EMPTY_REPLY_TEXT and result.trace["empty_reply"] is True
+    assert result.record.model_response == "" and result.record.leaked is False       # в журнале сырой ответ модели
+    backend.reply = None
+    again = await ask(pipeline, BENIGN)                                               # молчание модели не залипает в кэше
+    assert again.text != EMPTY_REPLY_TEXT and again.record.cache_hit is False
 
 
 async def test_unavailable_defender_closes_only_its_level(pipeline, backend):
     backend.dead = {"gemma4-12b"}
     assert pipeline.available_world_levels == [1, 2, 3]
     result = await ask(pipeline, TECH_ATTACK, level=4)
-    assert "недоступен" in result.text and backend.calls == []
+    assert "недоступен" in result.text and backend.calls == [] and result.record is None
     assert (await ask(pipeline, TECH_ATTACK, level=3)).trace["blocked_by"] is None
 
 
@@ -242,7 +282,7 @@ async def test_requests_are_processed_concurrently(pipeline, backend):
     start = time.perf_counter()
     results = await asyncio.gather(*(ask(pipeline, f"{BENIGN} {i}") for i in range(10)))
     elapsed = time.perf_counter() - start
-    assert all(r.llm_response for r in results)
+    assert all(r.record.model_response for r in results)
     assert backend.max_active == 10
     assert elapsed < 1.0, f"10 запросов по 0.3 с шли {elapsed:.2f} с: похоже на последовательную обработку"
 

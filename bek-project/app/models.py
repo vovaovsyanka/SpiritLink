@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     MetaData,
+    REAL,
     SmallInteger,
     String,
     Text,
@@ -119,7 +120,12 @@ class UserPass(Base):
 
 
 class Attempt(Base):
-    """Журнал попыток: одна строка = одна отправка в свободном промпте."""
+    """
+    Журнал запросов, дошедших до классификатора; из него собирается набор для дообучения классификаторов.
+    Не пишутся: пустой, слишком длинный и бессловесный текст (гигиена), ввод слова-якоря (он лишь ставит
+    followed_by_password предыдущему запросу), сбои сервиса. Вердикты BERT и шлюза — предсказания моделей, а не
+    эталонная разметка; независимые сигналы только leaked и followed_by_password.
+    """
 
     __tablename__ = "attempts"
     __table_args__ = (
@@ -132,16 +138,30 @@ class Attempt(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    # NULL — песочница вне сюжета
-    pass_id: Mapped[Optional[str]] = mapped_column(String(32))
+    # Категория призрака получается из pass_id (settings.LEVEL_TO_CATEGORY)
+    pass_id: Mapped[str] = mapped_column(String(32))
     prompt_text: Mapped[str] = mapped_column(Text)
-    # Ответ языковой модели (мини-LLM или защитника, в том числе из кэша повторов).
-    # NULL — модель не ответила (слово введено сразу, запрос отсёк шлюз или гигиена)
-    llm_response: Mapped[Optional[str]] = mapped_column(Text)
-    success: Mapped[bool] = mapped_column(Boolean)
-    # Трасса пайплайна: tier, stages (этап, модель, решение, время, токены), blocked_by (hygiene | gate),
-    # leaked (слово есть в ответе защитника), cache_hit, error
-    classifier_output: Mapped[dict] = mapped_column(JSONB)
     world_level: Mapped[int] = mapped_column(SmallInteger)
+
+    # Общий BERT: опасно или нет, и вероятность «опасно»
+    bert_dangerous: Mapped[bool] = mapped_column(Boolean)
+    bert_probability: Mapped[float] = mapped_column(REAL)
+    # Шлюз категории (запускается, только если BERT сказал «опасно»; иначе всё NULL). Мини-LLM и шлюз — одна модель,
+    # поэтому имя модели шлюза хранится отдельно от модели ответа
+    gate_model: Mapped[Optional[str]] = mapped_column(String(64))
+    gate_topics: Mapped[Optional[list[int]]] = mapped_column(ARRAY(SmallInteger))   # темы приёмов; 1 — другая попытка, 0 — безопасно
+    category_match: Mapped[Optional[bool]] = mapped_column(Boolean)                 # есть ли среди тем категория призрака
+
+    # Ответ: мини-LLM (BERT: безопасно) или защитника (шлюз пропустил). NULL — шлюз отказал, модель не вызывалась.
+    # Пустая строка — модель промолчала (игрок увидел «Дух молчит.»)
+    reply_model: Mapped[Optional[str]] = mapped_column(String(64))
+    model_response: Mapped[Optional[str]] = mapped_column(Text)
+    # Проверка утечки (leakcheck) ответа; leak_kind — способ раскрытия, NULL если утечки нет
+    leaked: Mapped[Optional[bool]] = mapped_column(Boolean)
+    leak_kind: Mapped[Optional[str]] = mapped_column(String(32))
+
+    # Следующим запросом игрок ввёл слово-якорь: скорее всего, ответ на этот запрос его раскрыл
+    followed_by_password: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    cache_hit: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))   # вердикты и ответ взяты из кэша повторов
     latency_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
