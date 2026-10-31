@@ -7,11 +7,11 @@ import asyncio
 import time
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app import settings
 from app.db import SessionLocal
-from app.models import UserPass
+from app.models import Attempt, UserPass
 from helpers import BARE_REQUEST, BENIGN, TECH_ATTACK
 
 pytestmark = pytest.mark.db
@@ -91,22 +91,23 @@ async def test_benign_request_is_answered_and_saved(make_player, backend):
     response = await player.predict(BENIGN)
     assert response.status_code == 200 and response.json()["passed"] is False
     (attempt,) = await player.attempts()
-    assert attempt.prompt_text == BENIGN
-    assert attempt.llm_response == response.json()["text"]           # то, что увидел игрок, записано
-    assert attempt.success is False and attempt.pass_id == "tony_stark"
+    assert attempt.prompt_text == BENIGN and attempt.pass_id == "tony_stark"
     assert attempt.world_level == settings.DEFAULT_WORLD_LEVEL and attempt.latency_ms >= 0
-    stages = [s["stage"] for s in attempt.classifier_output["stages"]]
-    assert stages == ["general_bert", "mini"]
-    assert attempt.classifier_output["tier"] == settings.DEFAULT_WORLD_LEVEL
+    assert attempt.bert_dangerous is False and 0 <= attempt.bert_probability <= 1
+    assert attempt.gate_model is None and attempt.gate_topics is None and attempt.category_match is None   # шлюз не запускался
+    assert attempt.reply_model == settings.SERVICE_MODEL and attempt.model_response == response.json()["text"]
+    assert attempt.leaked is False and attempt.leak_kind is None
+    assert attempt.followed_by_password is False and attempt.cache_hit is False
 
 
-async def test_gate_rejection_is_saved_without_llm_response(make_player, backend):
+async def test_gate_rejection_is_saved_with_verdicts_and_without_reply(make_player, backend):
     player = await make_player()
     response = await player.predict(BARE_REQUEST)
     assert response.status_code == 200 and response.json()["text"]
     (attempt,) = await player.attempts()
-    assert attempt.llm_response is None and attempt.classifier_output["blocked_by"] == "gate"
-    assert [s["stage"] for s in attempt.classifier_output["stages"]] == ["general_bert", "gate"]
+    assert attempt.bert_dangerous is True and attempt.gate_model == settings.SERVICE_MODEL
+    assert attempt.gate_topics == [1] and attempt.category_match is False
+    assert attempt.reply_model is None and attempt.model_response is None and attempt.leaked is None
 
 
 async def test_defender_leak_is_recorded_and_level_is_not_passed(make_player, backend):
@@ -115,8 +116,10 @@ async def test_defender_leak_is_recorded_and_level_is_not_passed(make_player, ba
     secret = await player.secret()
     assert secret in response.json()["text"] and response.json()["passed"] is False
     (attempt,) = await player.attempts()
-    assert attempt.classifier_output["leaked"] is True and attempt.success is False
-    assert "defender" in [s["stage"] for s in attempt.classifier_output["stages"]]
+    assert attempt.gate_topics == [3] and attempt.category_match is True
+    assert attempt.reply_model == settings.FINAL_LADDER[settings.DEFAULT_WORLD_LEVEL][0]
+    assert attempt.model_response == response.json()["text"] and attempt.leaked is True and attempt.leak_kind == "plain"
+    assert attempt.followed_by_password is False        # слово игрок пока не ввёл
 
 
 async def test_entering_the_word_passes_the_level_and_rotates_state(make_player, backend):
@@ -129,8 +132,7 @@ async def test_entering_the_word_passes_the_level_and_rotates_state(make_player,
     progress = (await player.get("/me/progress")).json()["passes"][0]
     assert progress["phase"] == "done" and progress["completed"] is True
     assert await player.used_secrets() == [secret]
-    (attempt,) = await player.attempts()
-    assert attempt.success is True and attempt.llm_response is None
+    assert await player.attempts() == []                                                # ввод слова в журнал не пишется
     assert (await player.predict(BENIGN)).status_code == 409                            # фаза done: свободный промпт закрыт
 
     restart = (await player.post("/passes/tony_stark/start")).json()                     # перепрохождение: новое слово
@@ -138,13 +140,52 @@ async def test_entering_the_word_passes_the_level_and_rotates_state(make_player,
     assert await player.secret() != secret
 
 
-async def test_hygiene_rejections_are_saved(make_player, backend):
+async def test_word_marks_the_last_defender_reply(make_player, backend):
+    player = await make_player()
+    for text in (TECH_ATTACK + " раз", TECH_ATTACK + " два", BENIGN, BARE_REQUEST):    # защитник, защитник, мини-LLM, отказ шлюза
+        assert (await player.predict(text)).status_code == 200
+    assert (await player.predict(await player.secret())).json()["passed"] is True
+    attempts = await player.attempts()
+    assert [a.followed_by_password for a in attempts] == [False, True, False, False]  # слово знает только защитник
+
+
+async def test_word_without_defender_reply_marks_nothing(make_player, backend):
+    player = await make_player()
+    await player.predict(BENIGN)
+    await player.predict(BARE_REQUEST)
+    await player.predict(await player.secret())
+    assert [a.followed_by_password for a in await player.attempts()] == [False, False]
+
+
+async def test_mark_does_not_reach_previous_run_of_the_level(make_player, backend):
+    player = await make_player()
+    await player.predict(TECH_ATTACK)
+    await player.predict(await player.secret())                                         # прохождение 1: запрос помечен
+    async with SessionLocal() as db:                                                    # снимаем пометку, чтобы увидеть, тронет ли её прохождение 2
+        await db.execute(update(Attempt).values(followed_by_password=False).where(Attempt.pass_id == "tony_stark"))
+        await db.commit()
+    await player.post("/passes/tony_stark/start")
+    for phase in ("puzzle", "free_prompt"):
+        await player.post("/passes/tony_stark/phase", json={"phase": phase})
+    assert (await player.predict(await player.secret())).json()["passed"] is True       # прохождение 2: слово без запросов
+    (attempt,) = await player.attempts()
+    assert attempt.followed_by_password is False
+
+
+async def test_word_is_accepted_when_attempt_limit_is_exhausted(make_player, backend, monkeypatch):
+    monkeypatch.setattr(settings, "ATTEMPTS_PER_HOUR", 1)
+    player = await make_player()
+    assert (await player.predict(BENIGN)).status_code == 200
+    assert (await player.predict(BENIGN + " ещё")).status_code == 429
+    assert (await player.predict(await player.secret())).json()["passed"] is True        # слово лимитом не блокируется
+
+
+async def test_requests_that_do_not_reach_the_classifier_are_not_saved(make_player, backend):
     player = await make_player()
     for text in ("   ", "а" * (settings.INPUT_MAX_CHARS + 1), "?!?!"):
         response = await player.predict(text)
         assert response.status_code == 200 and response.json()["text"]
-    attempts = await player.attempts()
-    assert [a.classifier_output["blocked_by"] for a in attempts] == ["hygiene"] * 3
+    assert await player.attempts() == []
     assert backend.calls == []
 
 
@@ -168,8 +209,9 @@ async def test_cache_hit_is_still_saved_as_attempt(make_player, backend):
     second = await player.predict(BENIGN)
     assert first.json() == second.json() and len(backend.calls) == 1
     attempts = await player.attempts()
-    assert len(attempts) == 2 and attempts[1].classifier_output["cache_hit"] is True
-    assert attempts[1].llm_response == attempts[0].llm_response
+    assert len(attempts) == 2 and (attempts[0].cache_hit, attempts[1].cache_hit) == (False, True)
+    assert attempts[1].model_response == attempts[0].model_response
+    assert attempts[1].bert_probability == attempts[0].bert_probability and attempts[1].reply_model == attempts[0].reply_model
 
 
 # ── уровни мира ──────────────────────────────────────────────────────────────
@@ -183,7 +225,7 @@ async def test_world_level_selects_defender_and_is_saved(make_player, backend):
     await player.predict(TECH_ATTACK)
     assert backend.calls_for("defender")[0]["model"] == settings.FINAL_LADDER[4][0]
     (attempt,) = await player.attempts()
-    assert attempt.world_level == 4 and attempt.classifier_output["tier"] == 4
+    assert attempt.world_level == 4 and attempt.reply_model == settings.FINAL_LADDER[4][0]
 
 
 async def test_unavailable_world_level_cannot_be_selected(make_player, backend):
@@ -206,13 +248,12 @@ async def test_busy_queue_gives_429_and_is_not_recorded(make_player, backend):
     assert (await player.predict(BENIGN)).status_code == 200                              # попытка не сгорела, лимит не тронут
 
 
-async def test_model_failure_returns_text_and_saves_attempt(make_player, backend):
+async def test_model_failure_returns_text_and_is_not_saved(make_player, backend):
     player = await make_player()
     backend.fail = True
     response = await player.predict(BENIGN)
     assert response.status_code == 200 and response.json()["text"].startswith("Сервис временно недоступен")
-    (attempt,) = await player.attempts()
-    assert attempt.classifier_output["error"] == "LLMError" and attempt.llm_response is None
+    assert await player.attempts() == []                                  # сбой сервиса не попадает в журнал и в лимит
 
 
 async def test_minimum_interval_between_attempts(make_player, backend, monkeypatch):

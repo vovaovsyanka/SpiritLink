@@ -10,14 +10,16 @@
         тема призрака есть → защитник ступени (знает слово) → проверка утечки
 
 Ступень защитника = уровень мира игрока (settings.FINAL_LADDER). Каждый этап попадает в trace (модель, решение,
-время) — он сохраняется в attempts.classifier_output для разбора ошибок.
+время) — для логов и разбора ошибок. В журнал попыток (attempts) уходит AttemptRecord: он есть только у запросов,
+дошедших до общего BERT; гигиена, ввод слова, недоступная ступень и сбой сервиса записи не оставляют.
 """
 
 import asyncio
 import logging
+import random
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 from app import settings
@@ -30,24 +32,54 @@ from app.text_utils import clean_input
 logger = logging.getLogger(__name__)
 
 SERVICE_ERROR_TEXT = "Сервис временно недоступен. Попробуйте ещё раз чуть позже."
-EMPTY_INPUT_TEXT = "Ты молчишь, посетитель."
-LONG_INPUT_TEXT = "Говори короче, посетитель."
-NO_WORDS_TEXT = "Я не разбираю такие знаки, посетитель. Говори словами."
 EMPTY_REPLY_TEXT = "Дух молчит."
+# Реплики гигиены: вариант выбирается случайно, чтобы отказы не повторялись слово в слово
+EMPTY_INPUT_REPLIES = (
+    "Ты молчишь, посетитель.",
+    "Тишина… Скажи хоть что-нибудь, посетитель.",
+    "Я жду, но ты ничего не говоришь.",
+)
+LONG_INPUT_REPLIES = (
+    "Говори короче, посетитель.",
+    "Слишком много слов, посетитель. Скажи главное.",
+    "Такой поток мне не осилить. Короче, посетитель.",
+)
+NO_WORDS_REPLIES = (
+    "Я не разбираю такие знаки, посетитель. Говори словами.",
+    "Это не слова, посетитель. Говори по-человечески.",
+    "Набор значков мне ни о чём не говорит. Скажи словами.",
+)
+
+
+@dataclass
+class AttemptRecord:
+    """Строка журнала попыток (attempts): имена полей совпадают с колонками таблицы."""
+
+    prompt_text: str
+    bert_dangerous: bool
+    bert_probability: float
+    gate_model: Optional[str] = None            # шлюз запускался, только если BERT сказал «опасно»
+    gate_topics: Optional[list[int]] = None
+    category_match: Optional[bool] = None
+    reply_model: Optional[str] = None           # None — шлюз отказал, модель не вызывалась
+    model_response: Optional[str] = None        # сырой ответ модели ("" — промолчала)
+    leaked: Optional[bool] = None
+    leak_kind: Optional[str] = None
+    cache_hit: bool = False
 
 
 @dataclass
 class PipelineResult:
     text: str
     passed: bool = False
-    llm_response: Optional[str] = None  # None — языковая модель не вызывалась
+    record: Optional[AttemptRecord] = None  # None — запрос не дошёл до классификатора, в журнал не пишется
     trace: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class _CachedReply:
     text: str
-    leaked: bool
+    record: AttemptRecord
 
 
 class _LRU:
@@ -70,18 +102,20 @@ class _LRU:
             self._items.popitem(last=False)
 
 
-def _same_word(text: str, secret: str) -> bool:
+def is_secret_word(text: str, secret: str) -> bool:
+    """Весь текст игрока — слово-якорь (без учёта регистра, пробелов по краям и Ё/Е)."""
+
     def fold(s: str) -> str:
         return s.strip().upper().replace("Ё", "Е")
 
-    return fold(text) == fold(secret)
+    return fold(clean_input(text)) == fold(secret)
 
 
 class ProcessingPipeline:
     def __init__(self, backend: GenerationBackend, general_bert: BaseClassifier):
         self.backend = backend
         self.general_bert = general_bert
-        self._replies = _LRU(settings.REPLY_CACHE_SIZE)            # (категория, ступень, слово, текст) → ответ модели
+        self._replies = _LRU(settings.REPLY_CACHE_SIZE)            # (категория, ступень, слово, текст) → ответ и вердикты
         self._topics = _LRU(settings.REPLY_CACHE_SIZE)             # текст → (темы, сырой ответ); от призрака не зависит
 
     @classmethod
@@ -143,7 +177,7 @@ class ProcessingPipeline:
             self._stage(trace, "hygiene", "-", ok=False, chars=len(text))
             return PipelineResult(rejection, trace=trace)
 
-        if _same_word(text, secret):
+        if is_secret_word(text, secret):
             trace["exact_match"] = True
             self._stage(trace, "password", "exact", ok=True)
             return PipelineResult("", passed=True, trace=trace)
@@ -157,32 +191,50 @@ class ProcessingPipeline:
         cached = self._replies.get(cache_key)
         if cached is not None:
             trace["cache_hit"] = True
-            trace["leaked"] = cached.leaked
-            return PipelineResult(cached.text, llm_response=cached.text, trace=trace)
+            trace["leaked"] = cached.record.leaked
+            return PipelineResult(
+                cached.text, record=replace(cached.record, prompt_text=text, cache_hit=True), trace=trace
+            )
 
         try:
             general = await self._run_bert(text, trace)
-            if general.label == 0:
+            record = AttemptRecord(
+                prompt_text=text,
+                bert_dangerous=general.label != 0,
+                bert_probability=general.probability if general.probability is not None else float(general.label),
+            )
+            if not record.bert_dangerous:
                 reply = await self._generate(
                     trace, "mini", settings.SERVICE_MODEL, prompts.build_mini(category, text)
                 )
+                record.reply_model = settings.SERVICE_MODEL
                 # Мини-LLM слова не знает, но оно может встретиться в легенде призрака (например, «Старков»)
-                leaked = check_leak(reply, secret).leaked
+                leak = check_leak(reply, secret)
             else:
                 topics = await self._topics_of(text, trace)
-                if category not in topics:
+                record.gate_model = settings.SERVICE_MODEL
+                record.gate_topics = sorted(topics)
+                record.category_match = category in topics
+                if not record.category_match:
                     trace["blocked_by"] = "gate"
-                    return PipelineResult(prompts.rejection_reply(category, topics), trace=trace)
+                    return PipelineResult(prompts.rejection_reply(category, topics), record=record, trace=trace)
 
                 reply = await self._generate(
                     trace, "defender", defender_model, prompts.build_defender(variant, category, secret, text)
                 )
+                record.reply_model = defender_model
                 leak = check_leak(reply, secret)
-                leaked = leak.leaked
-                self._stage(trace, "leakcheck", "leakcheck", ok=not leaked, leaked=leaked, kind=leak.kind)
-            trace["leaked"] = leaked
-            self._replies.put(cache_key, _CachedReply(reply, leaked))
-            return PipelineResult(reply, llm_response=reply, trace=trace)
+                self._stage(trace, "leakcheck", "leakcheck", ok=not leak.leaked, leaked=leak.leaked, kind=leak.kind)
+            record.model_response = reply
+            record.leaked = leak.leaked
+            record.leak_kind = leak.kind or None
+            trace["leaked"] = leak.leaked
+
+            if not reply:       # модель промолчала: игроку реплика-заглушка, в кэш она не попадает
+                trace["empty_reply"] = True
+                return PipelineResult(EMPTY_REPLY_TEXT, record=record, trace=trace)
+            self._replies.put(cache_key, _CachedReply(reply, record))
+            return PipelineResult(reply, record=record, trace=trace)
 
         except LLMBusy:
             raise
@@ -196,11 +248,11 @@ class ProcessingPipeline:
     def _hygiene(text: str) -> str:
         """Реплика призрака, если текст не годится для моделей (пусто, длиннее лимита, ни одной буквы или цифры), иначе пусто."""
         if not text:
-            return EMPTY_INPUT_TEXT
+            return random.choice(EMPTY_INPUT_REPLIES)
         if len(text) > settings.INPUT_MAX_CHARS:
-            return LONG_INPUT_TEXT
+            return random.choice(LONG_INPUT_REPLIES)
         if not any(ch.isalnum() for ch in text):
-            return NO_WORDS_TEXT
+            return random.choice(NO_WORDS_REPLIES)
         return ""
 
     @staticmethod
@@ -247,9 +299,6 @@ class ProcessingPipeline:
             model, *system_user, max_tokens=settings.MAX_NEW_TOKENS[purpose], temperature=temperature, purpose=purpose
         )
         text = generation.text.strip()
-        if purpose != "classifier" and not text:
-            text = EMPTY_REPLY_TEXT
-            trace["empty_reply"] = True
         if log:
             self._stage(
                 trace, purpose, model, ms=round((time.perf_counter() - start) * 1000),

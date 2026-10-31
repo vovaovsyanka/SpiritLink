@@ -3,6 +3,7 @@
 import logging
 import time
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,7 @@ from app.db import SessionLocal, engine
 from app.limits import check_attempt_limits, user_request_slot
 from app.llm import LLMBusy
 from app.models import Attempt, UserGameState, UserPass
-from app.pipeline import ProcessingPipeline
+from app.pipeline import ProcessingPipeline, is_secret_word
 from app.schemas import PredictRequest, PredictResponse
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,9 @@ async def predict(
 ) -> PredictResponse:
     """
     Попытка в свободном промпте. Доступна в фазе free_prompt, с лимитами (429 + Retry-After).
-    Если текст совпал со словом-якорем — passed=true, фаза становится done. Каждая попытка пишется в attempts.
+    Если текст совпал со словом-якорем — passed=true, фаза становится done; сам ввод слова в attempts не пишется
+    (лимиты на него не действуют), зато последний запрос, на который ответил защитник, помечается followed_by_password.
+    Запрос, дошедший до классификатора, пишется в attempts вместе с вердиктами этапов.
     """
     pipeline: ProcessingPipeline | None = getattr(request.app.state, "pipeline", None)
     if pipeline is None:
@@ -76,8 +79,9 @@ async def predict(
             world_level = await db.scalar(
                 select(UserGameState.world_level).where(UserGameState.user_id == user.id)
             ) or settings.DEFAULT_WORLD_LEVEL
-            await check_attempt_limits(db, user.id)
-            secret = row.secret
+            secret, run_started_at = row.secret, row.started_at
+            if not is_secret_word(data.text, secret):   # игрок, исчерпавший лимит, всё равно может ввести слово
+                await check_attempt_limits(db, user.id)
 
         start = time.perf_counter()
         try:
@@ -96,17 +100,30 @@ async def predict(
         latency_ms = round((time.perf_counter() - start) * 1000)
 
         async with SessionLocal() as db:
-            db.add(Attempt(
-                user_id=user.id,
-                pass_id=data.pass_id,
-                prompt_text=data.text,
-                llm_response=result.llm_response,
-                success=result.passed,
-                classifier_output=result.trace,
-                world_level=world_level,
-                latency_ms=latency_ms,
-            ))
+            if result.record is not None:
+                db.add(Attempt(
+                    user_id=user.id, pass_id=data.pass_id, world_level=world_level, latency_ms=latency_ms,
+                    **asdict(result.record),
+                ))
             if result.passed:
+                # Слово знает только защитник: помечаем его последний ответ в этом прохождении (предыдущие прохождения
+                # этого уровня, до started_at, не трогаем)
+                last_defender_reply = (
+                    select(Attempt.id)
+                    .where(
+                        Attempt.user_id == user.id,
+                        Attempt.pass_id == data.pass_id,
+                        Attempt.created_at >= run_started_at,
+                        Attempt.category_match.is_(True),
+                        Attempt.model_response != "",
+                    )
+                    .order_by(Attempt.id.desc())
+                    .limit(1)
+                    .scalar_subquery()
+                )
+                await db.execute(
+                    update(Attempt).where(Attempt.id == last_defender_reply).values(followed_by_password=True)
+                )
                 await db.execute(
                     update(UserPass)
                     .where(

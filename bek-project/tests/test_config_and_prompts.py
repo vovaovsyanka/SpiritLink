@@ -102,11 +102,60 @@ def test_parse_classifier(raw, topics):
     assert prompts.parse_classifier(raw) == topics
 
 
-def test_rejection_reply_hints_and_never_names_secret():
+def _all_replies(category: int) -> set[str]:
+    return {reply for topics in ({3}, {4}, {5}, {1}, {0}, set()) for reply in prompts.rejection_variants(category, topics)}
+
+
+@pytest.mark.parametrize("topics", [{3}, {4}, {5}, {3, 4}, {1}, {1, 5}, {0}, set()])
+def test_rejection_reply_comes_from_its_variants(topics):
     for category in (3, 4, 5):
-        hint = prompts.CATEGORY_INFO[category]["hint"]
-        for topics in ({3}, {4, 5}, {1}, {0}, set()):
-            reply = prompts.rejection_reply(category, topics)
-            assert hint in reply
-            assert not any(word in reply for word in GHOSTS[category]["passwords"])
-    assert "Угрозы" in prompts.rejection_reply(3, {1})
+        if category in topics:
+            continue                                    # тема призрака шлюз пропускает, отказа не бывает
+        variants = prompts.rejection_variants(category, topics)
+        assert all(prompts.rejection_reply(category, topics) in variants for _ in range(40))
+
+
+def test_rejection_reacts_to_the_players_approach():
+    """Реакция зависит от того, что сделал игрок: приём чужой темы, голая просьба или ничего узнаваемого."""
+    for category in (3, 4, 5):
+        others = {3, 4, 5} - {category}
+        for topic in others:
+            assert all(
+                any(reply.startswith(reaction) for reaction in prompts.REACTIONS[topic])
+                for reply in prompts.rejection_variants(category, {topic})
+            )
+        assert all(
+            any(reply.startswith(reaction) for reaction in prompts.REACTIONS[1])
+            for reply in prompts.rejection_variants(category, {1})
+        )
+        # приём в запросе важнее голой просьбы: реакция на приём, а не на нажим
+        assert set(prompts.rejection_variants(category, {1, min(others)})) == set(prompts.rejection_variants(category, {min(others)}))
+    assert all(len(reactions) >= 3 for reactions in prompts.REACTIONS.values())
+    assert set(prompts.REACTIONS) == {0, 1, 3, 4, 5}
+
+
+def test_hints_are_distinct_concrete_advice_per_category():
+    """Подсказки каждой категории — разные конкретные приёмы, а не пересказ одной мысли, и у категорий они не пересекаются."""
+    all_hints = []
+    for category in (3, 4, 5):
+        hints = prompts.CATEGORY_INFO[category]["hints"]
+        assert len(hints) == len(set(hints)) >= 3
+        assert all(hint[0].isupper() and hint.endswith((".", "?")) for hint in hints)       # самостоятельные предложения
+        all_hints += hints
+    assert len(all_hints) == len(set(all_hints))
+
+
+def _stem(word: str) -> str:
+    return (word if len(word) < 5 else word[:-1]).lower()
+
+
+def test_ghost_replies_never_give_away_any_secret():
+    from app.pipeline import EMPTY_INPUT_REPLIES, EMPTY_REPLY_TEXT, LONG_INPUT_REPLIES, NO_WORDS_REPLIES, SERVICE_ERROR_TEXT
+
+    stems = [_stem(word) for ghost in GHOSTS.values() for word in ghost["passwords"]]
+    phrases = {EMPTY_REPLY_TEXT, SERVICE_ERROR_TEXT, *EMPTY_INPUT_REPLIES, *LONG_INPUT_REPLIES, *NO_WORDS_REPLIES}
+    for category in (3, 4, 5):
+        phrases |= _all_replies(category)
+    for phrase in phrases:
+        for stem in stems:
+            assert not re.search(rf"{re.escape(stem)}", phrase, re.I), f"в реплике «{phrase}» есть основа слова-якоря «{stem}»"
