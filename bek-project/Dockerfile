@@ -19,7 +19,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # PyTorch отдельным слоем и в CPU-сборке: у ВМ нет видеокарты, а обычная сборка с PyPI тянет CUDA (около 3 ГБ лишнего).
 # Docker кэширует слои: пока requirements.txt не менялся, пересборка образа не качает всё заново.
-RUN pip install "torch>=2.7" --index-url https://download.pytorch.org/whl/cpu
+# Если download.pytorch.org недоступен из сети сборки, запасной путь — обычный PyPI (там сборка с CUDA: образ больше, но работает)
+RUN pip install "torch>=2.7" --index-url https://download.pytorch.org/whl/cpu \
+    || pip install "torch>=2.7"
 
 COPY requirements.txt .
 # Строка --extra-index-url внутри requirements.txt нужна для установки на ПК; torch уже стоит, поэтому он не перекачивается
@@ -29,9 +31,8 @@ RUN pip install -r requirements.txt
 FROM python:3.11-slim AS runtime
 
 # Не root: если в приложении найдут уязвимость, у взломщика не будет прав администратора в контейнере
-RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin app \
-    && apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# (Никаких apt-get: зеркала пакетов на сервере бывают недоступны, а всё нужное уже есть в образе Python.)
+RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin app
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -53,7 +54,8 @@ EXPOSE 8000
 
 # Контейнер "здоров", когда сервер принимает запросы и пайплайн (BERT + модели) загружен.
 # Пока идёт загрузка (минуты), start-period не засчитывает неудачные проверки.
+# Проверка средствами самого Python (curl в образе нет): ошибка, если сервер не отвечает или пайплайн не готов.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=300s --retries=5 \
-    CMD curl -fsS http://127.0.0.1:8000/health | grep -q '"pipeline_ready":true' || exit 1
+    CMD ["python", "-c", "import urllib.request, sys; body = urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).read(); sys.exit(0 if b'\"pipeline_ready\":true' in body else 1)"]
 
 ENTRYPOINT ["/entrypoint.sh"]

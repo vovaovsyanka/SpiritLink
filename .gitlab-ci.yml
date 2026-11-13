@@ -62,7 +62,8 @@ test:
   script:
     - cd bek-project
     # PyTorch в CPU-сборке (иначе pip скачает CUDA-версию на несколько ГБ)
-    - pip install "torch>=2.7" --index-url https://download.pytorch.org/whl/cpu
+    # (если download.pytorch.org недоступен с runner-01, запасной путь — PyPI: образ тяжелее, но работает)
+    - pip install "torch>=2.7" --index-url https://download.pytorch.org/whl/cpu || pip install "torch>=2.7"
     - pip install -r requirements-dev.txt
     - alembic upgrade head                        # миграции применяются к чистой базе — это тоже проверка
     - pytest --junitxml=report.xml                 # непрошедший тест = красное задание = пайплайн останавливается
@@ -127,6 +128,8 @@ scan_web:
 # Раннер на ВМ приложения — shell-раннер: команды выполняются прямо на ВМ от пользователя gitlab-runner.
 .deploy:
   tags: [$DEPLOY_RUNNER_TAG]
+  # Одновременно выполняется только одно задание выкладки (stage, prod, откат): они не мешают друг другу
+  resource_group: spiritlink-deploy
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
