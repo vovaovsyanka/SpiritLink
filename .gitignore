@@ -50,3 +50,12 @@ desktop.ini
 *.log
 *.tmp
 *.temp
+
+# ── Деплой ───────────────────────────────────────────────────────────────────
+# Исходная сборка Unity (в git лежит только нужная часть: frontend/)
+/Build/
+# Настройки compose с паролями (в git только .env.example) и резервные копии БД
+/.env
+/backups/
+/jmeter-report/
+/jmeter-report-out/

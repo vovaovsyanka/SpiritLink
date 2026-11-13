@@ -1,0 +1,112 @@
+# Весь сервис одной командой:  docker compose up -d --wait
+#
+# Три контейнера:
+#   db      — PostgreSQL (игроки, прогресс, журнал попыток); данные лежат в томе db-data и переживают пересоздание контейнера
+#   app     — бэкенд: FastAPI + общий BERT на процессоре; языковые модели берёт у LLM-сервиса сервера
+#   web     — nginx: игра (Unity WebGL) и проксирование API; единственный контейнер, торчащий наружу
+# и один вспомогательный:
+#   backup  — по расписанию делает копию базы (pg_dump)
+#
+# Настройки берутся из файла .env рядом (образец — .env.example). Один и тот же файл работает и для "prod", и для "stage":
+# их различают имя стенда (STAND_NAME) и порт.
+
+name: ${STAND_NAME:-spiritlink}
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-spiritlink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
+      POSTGRES_DB: ${POSTGRES_DB:-spiritlink}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Готова ли база принимать подключения. $$ — чтобы переменную подставил контейнер, а не compose
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    image: ${APP_IMAGE:-spiritlink-app:local}
+    build:
+      context: ./bek-project
+    restart: unless-stopped
+    # app стартует, только когда БД здорова (alembic при старте сразу идёт в базу)
+    depends_on:
+      db:
+        condition: service_healthy
+    # На сервере панель записывает сюда OPENAI_BASE_URL и OPENAI_API_KEY (доступ к LLM-сервису).
+    # required: false — локально файла нет, и это не ошибка.
+    env_file:
+      - path: ${LLM_ENV_FILE:-/etc/vmpanel-llm.env}
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-spiritlink}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-spiritlink}
+      LLM_BACKEND: ${LLM_BACKEND:-ollama}
+      STUB_MODELS: ${STUB_MODELS:-0}
+      STUB_LLM: ${STUB_LLM:-0}
+      STUB_LLM_DELAY_MS: ${STUB_LLM_DELAY_MS:-0}
+      BERT_DEVICE: cpu
+      OLLAMA_CONCURRENCY: ${OLLAMA_CONCURRENCY:-2}
+      OLLAMA_MODELS: ${OLLAMA_MODELS:-}
+      LLM_MAX_QUEUE: ${LLM_MAX_QUEUE:-32}
+      ATTEMPTS_PER_HOUR: ${ATTEMPTS_PER_HOUR:-30}
+      ATTEMPTS_PER_DAY: ${ATTEMPTS_PER_DAY:-200}
+      MIN_SECONDS_BETWEEN_ATTEMPTS: ${MIN_SECONDS_BETWEEN_ATTEMPTS:-3}
+      REPLY_CACHE_SIZE: ${REPLY_CACHE_SIZE:-2000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      # Веса BERT лежат на машине вне образа (1,6 ГБ, не публичные): только чтение
+      - ${MODELS_DIR:-./bek-project/models}:/app/models:ro
+    networks:
+      default:
+      # Общая сеть с Prometheus (monitoring/): он ходит за метриками прямо в app, минуя nginx.
+      # Псевдоним у каждого стенда свой (spiritlink-prod-app, spiritlink-stage-app).
+      monitoring:
+        aliases:
+          - ${STAND_NAME:-spiritlink}-app
+
+  web:
+    image: ${WEB_IMAGE:-spiritlink-web:local}
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      # Без 127.0.0.1: к ВМ подключается Nginx Proxy Manager сервера по её внутреннему IP.
+      # Снаружи порт всё равно закрыт группой безопасности OpenStack.
+      - "${WEB_PORT:-8082}:8080"
+
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-spiritlink}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-spiritlink}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-12}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    volumes:
+      - ./backup:/backup:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    entrypoint: ["/bin/sh", "/backup/backup-loop.sh"]
+
+volumes:
+  db-data:
+
+networks:
+  # Создаётся один раз командой:  docker network create spiritlink-monitoring
+  # (общая для стендов prod и stage и для Prometheus; см. compose.monitoring.yml)
+  monitoring:
+    name: spiritlink-monitoring
+    external: true
