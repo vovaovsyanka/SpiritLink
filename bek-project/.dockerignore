@@ -1,0 +1,19 @@
+# Что не должно попадать в контекст сборки образа (ускоряет сборку и не тащит в образ лишнее и секретное)
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+logs/
+models/
+tools/
+experiments/
+tests/
+scripts/
+.git
+.gitignore
+*.md

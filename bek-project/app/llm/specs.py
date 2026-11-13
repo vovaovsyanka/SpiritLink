@@ -20,6 +20,11 @@ class ModelSpec:
     def path(self) -> Path:
         return settings.LLM_DIR / f"{self.key}.gguf"
 
+    @property
+    def ollama_name(self) -> str:
+        """Имя модели в Ollama: из OLLAMA_MODELS или hf.co/<репозиторий>:<квант> (так администратор грузит GGUF с Hugging Face)."""
+        return settings.OLLAMA_MODELS.get(self.key) or f"hf.co/{self.repo}:{self.quant}"
+
 
 # Те же модели и параметры, что в experiments/config.py (по итогам экспериментов, experiments/REPORT.md).
 MODELS: dict[str, ModelSpec] = {m.key: m for m in [

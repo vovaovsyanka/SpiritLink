@@ -1,0 +1,224 @@
+# Пайплайн CI/CD проекта SpiritLink (GitLab CI).
+#
+# Как это работает: после каждого git push GitLab читает этот файл и создаёт пайплайн — цепочку стадий (stages).
+# Внутри стадии задания (jobs) идут параллельно; следующая стадия стартует, только если все задания предыдущей прошли.
+# Каждое задание выполняет раннер (runner) — программа на какой-нибудь машине. У нас два вида раннеров:
+#   • общий runner-01 (без тегов): проверяет, собирает образы, сканирует, гоняет нагрузку — это машина №1
+#   • раннер на ВМ приложения (тег deploy-spiritlink): только выкладывает — это машина №2 (требование Б2)
+#
+#   check ──► build ──► scan ──► deploy_stage ──► loadtest ──► deploy_prod
+#   линтер,   2 образа   Trivy    тестовый стенд   JMeter      боевой стенд
+#   тесты     в registry                           + гейт      (+ ручной откат)
+#
+# Что нужно задать в GitLab (Settings -> CI/CD -> Variables), подробности — docs/deploy/README.md:
+#   PROD_POSTGRES_PASSWORD, STAGE_POSTGRES_PASSWORD  (Masked)         пароли баз
+#   STAGE_HOST                                                         IP ВМ приложения, по которому JMeter достучится до stage
+#   DEPLOY_RUNNER_TAG (необязательно)                                  тег раннера на ВМ, по умолчанию deploy-spiritlink
+#   LOAD_MAX_P95_MS (необязательно)                                    порог p95 нагрузочного теста, мс
+
+stages: [check, build, scan, deploy_stage, loadtest, deploy_prod, rollback]
+
+variables:
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"                      # тег образа = короткий хеш коммита (требование В2)
+  APP_IMAGE: "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHORT_SHA"
+  WEB_IMAGE: "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHORT_SHA"
+  DEPLOY_RUNNER_TAG: "deploy-spiritlink"
+  # Пороги нагрузочного теста (обоснование — в docs/deploy/README.md, раздел про JMeter)
+  LOAD_MAX_ERROR_PCT: "1"
+  LOAD_MAX_P95_MS: "3000"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"            # кэш pip между запусками: ускоряет установку зависимостей
+
+# Не запускать пайплайн дважды на один и тот же push (ветка + merge request)
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+# ── Стадия 1: проверка кода ──────────────────────────────────────────────────
+lint:
+  stage: check
+  image: python:3.11-slim
+  script:
+    - pip install ruff
+    - ruff check bek-project
+
+test:
+  stage: check
+  image: python:3.11-slim
+  # Для тестов нужен PostgreSQL: GitLab поднимает его рядом с заданием как "сервис" и даёт ему имя postgres
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+  variables:
+    POSTGRES_USER: spiritlink
+    POSTGRES_PASSWORD: ci-only-password           # одноразовая база внутри задания, не секрет
+    POSTGRES_DB: spiritlink
+    DATABASE_URL: "postgresql+asyncpg://spiritlink:ci-only-password@postgres:5432/spiritlink"
+  cache:
+    key: pip-$CI_COMMIT_REF_SLUG
+    paths: [.cache/pip]
+  script:
+    - cd bek-project
+    # PyTorch в CPU-сборке (иначе pip скачает CUDA-версию на несколько ГБ)
+    - pip install "torch>=2.7" --index-url https://download.pytorch.org/whl/cpu
+    - pip install -r requirements-dev.txt
+    - alembic upgrade head                        # миграции применяются к чистой базе — это тоже проверка
+    - pytest --junitxml=report.xml                 # непрошедший тест = красное задание = пайплайн останавливается
+  artifacts:
+    when: always
+    reports:
+      junit: bek-project/report.xml                # результаты тестов видны прямо в интерфейсе GitLab
+
+# ── Стадия 2: сборка образов ─────────────────────────────────────────────────
+# Образы собираются на runner-01 (машина №1) и кладутся в registry. На ВМ приложения ничего не собирается:
+# она только скачивает готовые образы по тегу.
+.build:
+  stage: build
+  image: docker:29-cli                              # в образе есть docker-клиент; демон — Docker хоста runner-01 (docker.sock)
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+build_app:
+  extends: .build
+  script:
+    # --provenance=false: Container Registry GitLab не принимает образы с attestation-манифестом BuildKit
+    - docker build --provenance=false -t "$APP_IMAGE" bek-project
+    - docker push "$APP_IMAGE"
+
+build_web:
+  extends: .build
+  script:
+    - docker build --provenance=false -f web/Dockerfile -t "$WEB_IMAGE" .
+    - docker push "$WEB_IMAGE"
+
+# ── Стадия 3: сканирование образов на уязвимости (модуль «Безопасность образов») ──
+# Trivy сверяет пакеты в образе с базой известных уязвимостей. --exit-code 1 + CRITICAL: найдена критическая
+# уязвимость — задание красное, пайплайн дальше не идёт. --ignore-unfixed: исправления которых ещё не выпущены, не считаем.
+.trivy:
+  stage: scan
+  image:
+    name: aquasec/trivy:0.58.1
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/trivy"
+    TRIVY_NO_PROGRESS: "true"
+  cache:
+    key: trivy
+    paths: [.cache/trivy]
+
+scan_app:
+  extends: .trivy
+  needs: [build_app]
+  script:
+    # Сначала полный отчёт (для отчёта по работе), потом строгая проверка
+    - trivy image --image-src docker --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 "$APP_IMAGE"
+    - trivy image --image-src docker --severity CRITICAL --ignore-unfixed --exit-code 1 "$APP_IMAGE"
+
+scan_web:
+  extends: .trivy
+  needs: [build_web]
+  script:
+    - trivy image --image-src docker --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 "$WEB_IMAGE"
+    - trivy image --image-src docker --severity CRITICAL --ignore-unfixed --exit-code 1 "$WEB_IMAGE"
+
+# ── Стадии 4-6: выкладка и нагрузочный тест (только ветка main) ──────────────
+# Раннер на ВМ приложения — shell-раннер: команды выполняются прямо на ВМ от пользователя gitlab-runner.
+.deploy:
+  tags: [$DEPLOY_RUNNER_TAG]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy_stage:
+  extends: .deploy
+  stage: deploy_stage
+  needs: [scan_app, scan_web, lint, test]
+  environment:
+    name: stage
+  script:
+    - bash deploy/deploy.sh stage
+
+# Нагрузочный тест: JMeter запускается на runner-01 (машина №1), а тестируемый стенд работает на ВМ приложения
+# (машина №2) — генератор нагрузки не на одной машине с сервисом (требование В3).
+# Нагрузка идёт на stage, где вместо настоящих языковых моделей заглушка: чужой LLM-сервис не нагружаем.
+loadtest:
+  stage: loadtest
+  needs: [deploy_stage]
+  image:
+    name: justb4/jmeter:5.5
+    entrypoint: [""]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $SKIP_LOADTEST != "1"
+  variables:
+    STEP_USERS: "5"        # игроков в каждой ступени; ступеней 4, итого до 20 одновременных
+    STEP_SEC: "60"         # длина ступени, с (весь тест около 4 минут)
+  script:
+    - |
+      jmeter -n -t loadtest/spiritlink.jmx \
+        -Jhost="${STAGE_HOST:?задайте переменную STAGE_HOST}" -Jport=8083 \
+        -Jstep_users="$STEP_USERS" -Jstep_sec="$STEP_SEC" \
+        -l jmeter-results.jtl -e -o jmeter-report -j jmeter.log
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [jmeter-report/, jmeter-results.jtl, jmeter.log]
+
+# Гейт: пайплайн падает, если ошибок больше 1 % или p95 выше порога
+loadtest_gate:
+  stage: loadtest
+  needs: [loadtest]
+  image: python:3.11-slim
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $SKIP_LOADTEST != "1"
+  script:
+    - python loadtest/check_thresholds.py jmeter-report/statistics.json
+
+deploy_prod:
+  extends: .deploy
+  stage: deploy_prod
+  needs:
+    - job: loadtest_gate
+      optional: true      # при SKIP_LOADTEST=1 нагрузочных заданий нет
+    - deploy_stage
+  environment:
+    name: production
+  script:
+    - bash deploy/deploy.sh prod
+
+# ── Откат (требование В2) ────────────────────────────────────────────────────
+# Ручное задание: Pipelines -> нужный пайплайн -> rollback_prod -> «Run with variables» -> ROLLBACK_TAG=<тег из registry>.
+# Берёт из registry уже собранный старый образ, ничего не пересобирается.
+rollback_prod:
+  extends: .deploy
+  stage: rollback
+  needs: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  variables:
+    ROLLBACK_TAG:
+      value: ""
+      description: "Тег образа, на который откатываемся (короткий хеш коммита, см. Deploy -> Container Registry)"
+  environment:
+    name: production
+  script:
+    - test -n "$ROLLBACK_TAG" || { echo "Укажите ROLLBACK_TAG"; exit 1; }
+    - IMAGE_TAG="$ROLLBACK_TAG" bash deploy/deploy.sh prod
+
+# ── Мониторинг (вручную: Prometheus + Grafana на ВМ) ─────────────────────────
+deploy_monitoring:
+  extends: .deploy
+  stage: deploy_prod
+  needs: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  allow_failure: true
+  script:
+    - docker network inspect spiritlink-monitoring >/dev/null 2>&1 || docker network create spiritlink-monitoring
+    - install -d -m 755 /srv/app/spiritlink-monitoring
+    - rm -rf /srv/app/spiritlink-monitoring/monitoring
+    - cp -r compose.monitoring.yml monitoring /srv/app/spiritlink-monitoring/
+    - umask 077 && printf 'GRAFANA_ADMIN_PASSWORD=%s\nGRAFANA_ROOT_URL=%s\n' "$GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ROOT_URL:-http://localhost:3000}" > /srv/app/spiritlink-monitoring/.env
+    - cd /srv/app/spiritlink-monitoring && docker compose -f compose.monitoring.yml up -d --wait

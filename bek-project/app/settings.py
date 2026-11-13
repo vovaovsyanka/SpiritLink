@@ -37,6 +37,21 @@ LLM_TIMEOUT_SEC = 120
 # Сколько запросов может ждать свободного слота модели; дальше игрок получает 429 с Retry-After
 LLM_MAX_QUEUE = int(os.getenv("LLM_MAX_QUEUE", "32"))
 
+# ── Ollama (LLM-сервис сервера): LLM_BACKEND=ollama ─────────────────────────
+# Адрес и ключ панель сервера записывает на ВМ в /etc/vmpanel-llm.env (OPENAI_BASE_URL, OPENAI_API_KEY).
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "").rstrip("/")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# Сколько запросов одновременно разрешает шлюз этой ВМ (лимит задаёт администратор, по умолчанию 2)
+OLLAMA_CONCURRENCY = int(os.getenv("OLLAMA_CONCURRENCY", "2"))
+OLLAMA_RETRIES = int(os.getenv("OLLAMA_RETRIES", "3"))             # повторов при 429 / 502 / 503 от шлюза
+OLLAMA_WARMUP = os.getenv("OLLAMA_WARMUP", "1") == "1"             # при старте загрузить модели в память GPU
+OLLAMA_KEEPALIVE_SEC = int(os.getenv("OLLAMA_KEEPALIVE_SEC", "1200"))   # Ollama выгружает модель через 30 минут простоя
+OLLAMA_REASONING_EFFORT = os.getenv("OLLAMA_REASONING_EFFORT", "none")  # "none" отключает рассуждения; пусто — не передавать
+# Имена моделей в Ollama, если они отличаются от hf.co/<репозиторий>:<квант>. Формат: "qwen3-4b=qwen3:4b,gemma4-12b=gemma4:12b"
+OLLAMA_MODELS = dict(
+    pair.split("=", 1) for pair in os.getenv("OLLAMA_MODELS", "").replace(" ", "").split(",") if "=" in pair
+)
+
 # Параметры генерации (как в экспериментах, experiments/config.py)
 TEMPERATURE = 0.7
 TOP_P = 0.9
@@ -56,6 +71,8 @@ FINAL_LADDER: dict[int, tuple[str, str]] = {
 # ── Заглушки для разработки (без весов моделей / без LLM) ────────────────────
 STUB_MODELS = os.getenv("STUB_MODELS", "0") == "1"   # вместо общего BERT — правила по ключевым словам
 STUB_LLM = os.getenv("STUB_LLM", "0") == "1"         # вместо языковых моделей — заглушка
+# Задержка ответа заглушки, мс (для нагрузочного теста: имитирует время генерации настоящей модели; шлюз — четверть)
+STUB_LLM_DELAY_MS = int(os.getenv("STUB_LLM_DELAY_MS", "0"))
 
 # ── База данных ──────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv(

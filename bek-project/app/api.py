@@ -7,11 +7,12 @@ from dataclasses import asdict
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import func, select, update
 
-from app import auth, game, settings
+from app import auth, game, metrics, settings
 from app.auth import CurrentUser, get_current_user
 from app.db import SessionLocal, engine
 from app.limits import check_attempt_limits, user_request_slot
@@ -51,6 +52,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(metrics.MetricsMiddleware)
 
 app.include_router(auth.router)
 app.include_router(game.router)
@@ -96,7 +99,7 @@ async def predict(
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 "Сервер сейчас занят, попробуйте ещё раз",
                 headers={"Retry-After": str(e.retry_after)},
-            )
+            ) from e
         latency_ms = round((time.perf_counter() - start) * 1000)
 
         async with SessionLocal() as db:
@@ -139,7 +142,14 @@ async def predict(
                 )
             await db.commit()
 
+    metrics.PREDICT_OUTCOMES.labels(metrics.predict_outcome(result.passed, result.record)).inc()
     return PredictResponse(text=result.text, passed=result.passed)
+
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics():
+    """Метрики для Prometheus. Снаружи закрыт на уровне nginx (web/nginx.conf), читается по внутренней сети docker."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/health")

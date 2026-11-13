@@ -1,0 +1,15 @@
+# Линтер: ruff check . (запускается и в CI, стадия check)
+line-length = 140
+target-version = "py311"
+extend-exclude = ["venv", "models", "tools", "experiments"]   # experiments — исследовательский код, в проверку не входит
+
+[lint]
+# E, W — стиль pycodestyle, F — настоящие ошибки (неиспользуемые импорты и переменные, неопределённые имена),
+# B — типичные ловушки Python
+select = ["E", "W", "F", "B"]
+ignore = ["E501", "B008"]   # E501: длину строк не проверяем; B008: Depends() в аргументах — обычная практика FastAPI
+
+[lint.per-file-ignores]
+"tests/*" = ["E402"]        # conftest ставит переменные окружения до импорта app
+"scripts/*" = ["E402"]
+"main.py" = ["E402"]       # HF_HUB_OFFLINE выставляется до импорта приложения
