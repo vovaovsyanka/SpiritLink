@@ -1,7 +1,7 @@
 """Начальная схема: users, auth_sessions, user_game_state, user_passes, attempts
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2026-10-20 19:48:07.801977
 """
 

@@ -22,7 +22,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field, replace
 from typing import Optional
 
-from app import settings
+from app import metrics, settings
 from app.classifiers import BaseClassifier
 from app.leakcheck import check_leak
 from app.llm import GenerationBackend, LLMBusy, create_backend, prompts
@@ -263,6 +263,7 @@ class ProcessingPipeline:
     async def _run_bert(self, text: str, trace: dict):
         start = time.perf_counter()
         prediction = await asyncio.to_thread(self.general_bert.predict, text)
+        metrics.BERT_DURATION.observe(time.perf_counter() - start)
         self._stage(
             trace, "general_bert", self.general_bert.get_name(), label=prediction.label,
             probability=prediction.probability, ms=round((time.perf_counter() - start) * 1000), **prediction.details,
@@ -295,9 +296,20 @@ class ProcessingPipeline:
         temperature: float | None = None, log: bool = True,
     ) -> str:
         start = time.perf_counter()
-        generation = await self.backend.generate(
-            model, *system_user, max_tokens=settings.MAX_NEW_TOKENS[purpose], temperature=temperature, purpose=purpose
-        )
+        result = "ok"
+        try:
+            generation = await self.backend.generate(
+                model, *system_user, max_tokens=settings.MAX_NEW_TOKENS[purpose], temperature=temperature, purpose=purpose
+            )
+        except LLMBusy:
+            result = "busy"
+            raise
+        except Exception:
+            result = "error"
+            raise
+        finally:
+            metrics.LLM_REQUESTS.labels(model, purpose, result).inc()
+            metrics.LLM_DURATION.labels(model, purpose).observe(time.perf_counter() - start)
         text = generation.text.strip()
         if log:
             self._stage(

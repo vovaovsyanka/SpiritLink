@@ -95,7 +95,7 @@ async def register(data: RegisterRequest, request: Request, db: AsyncSession = D
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Логин уже занят")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Логин уже занят") from None
 
     db.add(UserGameState(user_id=user.id, world_level=settings.DEFAULT_WORLD_LEVEL))
     response = _open_session(db, user.id, request)

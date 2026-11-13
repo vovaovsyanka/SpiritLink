@@ -13,7 +13,11 @@ def create_backend() -> GenerationBackend:
         from .llamacpp import LlamaCppBackend
 
         return LlamaCppBackend()
-    raise ValueError(f"Неизвестный LLM_BACKEND={settings.LLM_BACKEND!r}. Поддерживается: llamacpp")
+    if settings.LLM_BACKEND == "ollama":
+        from .ollama import OllamaBackend
+
+        return OllamaBackend()
+    raise ValueError(f"Неизвестный LLM_BACKEND={settings.LLM_BACKEND!r}. Поддерживается: llamacpp, ollama")
 
 
 __all__ = ["Generation", "GenerationBackend", "LLMBusy", "LLMError", "create_backend"]

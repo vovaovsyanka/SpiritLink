@@ -1,7 +1,10 @@
 """Заглушка языковых моделей для запуска без весов (STUB_LLM=1). Только для разработки."""
 
+import asyncio
 import re
 from typing import Iterable
+
+from app import settings
 
 from .backend import Generation, GenerationBackend
 
@@ -37,6 +40,9 @@ class StubBackend(GenerationBackend):
         self, model: str, system: str, user: str, *, max_tokens: int,
         temperature: float | None = None, purpose: str = "",
     ) -> Generation:
+        if settings.STUB_LLM_DELAY_MS:
+            delay = settings.STUB_LLM_DELAY_MS / (4 if purpose == "classifier" else 1)
+            await asyncio.sleep(delay / 1000)
         text = user.lower()
         if purpose == "classifier":
             topics = [str(t) for t, words in _TOPIC_WORDS.items() if any(w in text for w in words)]

@@ -7,11 +7,11 @@ import asyncio
 import time
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import update
 
 from app import settings
 from app.db import SessionLocal
-from app.models import Attempt, UserPass
+from app.models import Attempt
 from helpers import BARE_REQUEST, BENIGN, TECH_ATTACK
 
 pytestmark = pytest.mark.db
@@ -219,7 +219,7 @@ async def test_world_level_selects_defender_and_is_saved(make_player, backend):
     player = await make_player()
     levels = (await player.get("/world-levels")).json()
     assert levels["current"] == settings.DEFAULT_WORLD_LEVEL
-    assert [l["name"] for l in levels["levels"]] == list(settings.WORLD_LEVELS.values())
+    assert [lv["name"] for lv in levels["levels"]] == list(settings.WORLD_LEVELS.values())
 
     assert (await player.client.put("/me/world-level", headers=player.headers, json={"world_level": 4})).json()["current"] == 4
     await player.predict(TECH_ATTACK)
@@ -232,7 +232,7 @@ async def test_unavailable_world_level_cannot_be_selected(make_player, backend):
     player = await make_player()
     backend.dead = {"gemma4-12b"}
     levels = (await player.get("/world-levels")).json()["levels"]
-    assert [l["available"] for l in levels] == [True, True, True, False]
+    assert [lv["available"] for lv in levels] == [True, True, True, False]
     assert (await player.client.put("/me/world-level", headers=player.headers, json={"world_level": 4})).status_code == 409
     assert (await player.client.put("/me/world-level", headers=player.headers, json={"world_level": 9})).status_code == 422
 
